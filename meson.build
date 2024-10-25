@@ -11,6 +11,8 @@ conf_data = configuration_data()
 conf_data.set_quoted('PROGRAM_NAME', meson.project_name())
 conf_data.set_quoted('VERSION', meson.project_version())
 
-configure_file(output: 'config.h', configuration: conf_data)
+configure_file(output: 'build_config.h', configuration: conf_data)
 
-executable(meson.project_name(), 'main.c', dependencies: [cjson])
+source_files = ['main.c', 'config.h', 'config.c', 'data.h', 'data.c', 'util.h', 'util.c']
+
+executable(meson.project_name(), source_files, dependencies: [cjson])
