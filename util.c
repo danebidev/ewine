@@ -1,8 +1,12 @@
 #include "util.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+
+#include "config.h"
 
 void remove_last_path_component(const char* path) {
     // Loop to handle the case where there's multiple
@@ -38,4 +42,29 @@ char* read_file(const char* path) {
 
     fclose(file);
     return buffer;
+}
+
+int mkdirp(const char* path) {
+    char tmp[PATH_SIZE];
+    char* p = NULL;
+    size_t len;
+
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    len = strlen(tmp);
+    if (tmp[len - 1] == '/')
+        tmp[len - 1] = 0;
+
+    for (p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+                return -1;
+            }
+            *p = '/';
+        }
+    }
+    if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+        return -1;
+    }
+    return 0;
 }

@@ -3,6 +3,7 @@
 #define PATH_SIZE 512
 
 typedef struct {
+    _Bool verbose;
     char data_file[PATH_SIZE];
     char prefix_dir[PATH_SIZE];
 } config_t;
