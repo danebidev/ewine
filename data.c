@@ -142,83 +142,60 @@ void alloc_component_array(uint8_t type, size_t length) {
     *target = new_ptr;
 }
 
-/**
- * Parses a prefix entry from JSON and stores it in the data structure.
- * @param prefix_index Index in the prefixes array to store the parsed data
- * @param json JSON object containing prefix data
- * @return 0 on success, -1 on failure
- */
-int parse_prefix(size_t prefix_index, cJSON* json) {
-    prefix_t* current = &data.prefixes[prefix_index];
-
-    current->name = json_get_string(json, "name");
-    if (!current->name) {
-        LOG(LOG_WARNING, "A prefix is missing the name field - ignoring it\n");
+int parse_component(install_type_t type, size_t array_index, cJSON* json) {
+    char* componentstr;
+    switch (type) {
+        case TYPE_PREFIX:
+            componentstr = "prefix";
+            break;
+        case TYPE_WINE:
+            componentstr = "wine install";
+            break;
+        case TYPE_DXVK:
+            componentstr = "DXVK install";
+            break;
+        case TYPE_INVALID:
+            ERROR("Invalid type. Should be impossible");
+    }
+    if (!cJSON_IsObject(json)) {
+        LOG(LOG_WARNING, "A %s is not an object - ignoring it\n", componentstr);
         return -1;
     }
 
-    current->path = json_get_string(json, "path");
-    if (!current->path) {
-        LOG(LOG_WARNING, "Prefix %s is missing the path field - ignoring it\n", current->name);
-        free(current->name);
+    char* name = json_get_string(json, "name");
+    if (name) {
+        LOG(LOG_WARNING, "A %s is missing the name field - ignoring it\n", componentstr);
         return -1;
     }
 
-    current->wine = json_get_string(json, "wine");
-    current->dxvk = json_get_string(json, "dxvk");
-
-    char* arch = json_get_string(json, "arch");
-    current->arch = str_to_arch(arch);
-    if (arch) free(arch);
-
-    return 0;
-}
-
-/**
- * Parses a Wine installation entry from JSON and stores it in the data structure.
- * @param wine_index Index in the wine_installs array to store the parsed data
- * @param json JSON object containing Wine installation data
- * @return 0 on success, -1 on failure
- */
-int parse_wine(size_t wine_index, cJSON* json) {
-    wine_t* current = &data.wine_installs[wine_index];
-
-    current->name = json_get_string(json, "name");
-    if (!current->name) {
-        LOG(LOG_WARNING, "A wine install is missing the name field - ignoring it\n");
+    char* path = json_get_string(json, "path");
+    if (path) {
+        LOG(LOG_WARNING, "%s %s is missing the path field - ignoring it\n", componentstr, name);
+        free(name);
         return -1;
     }
 
-    current->path = json_get_string(json, "path");
-    if (!current->path) {
-        LOG(LOG_WARNING, "Wine %s is missing the path field - ignoring it\n", current->name);
-        free(current->name);
-        return -1;
-    }
+    switch (type) {
+        case TYPE_PREFIX:
+            data.prefixes[array_index].name = name;
+            data.prefixes[array_index].path = path;
+            data.prefixes[array_index].wine = json_get_string(json, "wine");
+            data.prefixes[array_index].dxvk = json_get_string(json, "dxvk");
 
-    return 0;
-}
-
-/**
- * Parses a DXVK installation entry from JSON and stores it in the data structure.
- * @param dxvk_index Index in the dxvk_installs array to store the parsed data
- * @param json JSON object containing DXVK installation data
- * @return 0 on success, -1 on failure
- */
-int parse_dxvk(size_t dxvk_index, cJSON* json) {
-    dxvk_t* current = &data.dxvk_installs[dxvk_index];
-
-    current->name = json_get_string(json, "name");
-    if (!current->name) {
-        LOG(LOG_WARNING, "A DXVK install is missing the name field - ignoring it\n");
-        return -1;
-    }
-
-    current->path = json_get_string(json, "path");
-    if (!current->path) {
-        LOG(LOG_WARNING, "DXVK %s is missing the path field - ignoring it\n", current->name);
-        free(current->name);
-        return -1;
+            char* arch = json_get_string(json, "arch");
+            data.prefixes[array_index].arch = str_to_arch(arch);
+            if (arch) free(arch);
+            break;
+        case TYPE_WINE:
+            data.wine_installs[array_index].name = name;
+            data.wine_installs[array_index].path = path;
+            break;
+        case TYPE_DXVK:
+            data.dxvk_installs[array_index].name = name;
+            data.dxvk_installs[array_index].path = path;
+            break;
+        case TYPE_INVALID:
+            ERROR("Invalid type. Should be impossible.");
     }
 
     return 0;
@@ -230,7 +207,7 @@ int parse_dxvk(size_t dxvk_index, cJSON* json) {
  * @param json JSON array to parse
  * @param type Type of data to parse (TYPE_PREFIX, TYPE_WINE, or TYPE_DXVK)
  */
-void parse_component_array(cJSON* json, uint8_t type) {
+void parse_component_array(cJSON* json, install_type_t type) {
     if (!cJSON_IsArray(json))
         ERROR("invalid data file, %s is supposed to be an array\n", component_type_to_string(type));
 
@@ -245,20 +222,7 @@ void parse_component_array(cJSON* json, uint8_t type) {
             continue;
         }
 
-        int (*parse_func)(size_t, cJSON*) = NULL;
-        switch (type) {
-            case TYPE_PREFIX:
-                parse_func = parse_prefix;
-                break;
-            case TYPE_WINE:
-                parse_func = parse_wine;
-                break;
-            case TYPE_DXVK:
-                parse_func = parse_dxvk;
-                break;
-        }
-
-        if (parse_func(cur_element, element) == 0)
+        if (parse_component(type, cur_element, element) == 0)
             cur_element++;
     }
 
@@ -273,6 +237,9 @@ void parse_component_array(cJSON* json, uint8_t type) {
             break;
         case TYPE_DXVK:
             data.dxvk_count = cur_element;
+            break;
+        case TYPE_INVALID:
+            // TODO?
             break;
     }
 }
