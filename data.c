@@ -133,7 +133,7 @@ void alloc_component_array(uint8_t type, size_t length) {
 
     void* new_ptr;
     if (!*target)
-        new_ptr = malloc(length * size);
+        new_ptr = calloc(length, size);
     else
         new_ptr = reallocarray(*target, length, size);
 
@@ -143,11 +143,11 @@ void alloc_component_array(uint8_t type, size_t length) {
 }
 
 /**
- * Allocates or reallocates memory for an array of the specified type.
  * Parses a componenet of the specified type and stores it in the right array, at the specified index
  * @param type The type of component to parse (TYPE_PREFIX, TYPE_WINE, or TYPE_DXVK)
  * @param array_index The index of the right array where the component will be stored
  * @param json The json object to parse
+ * @return 0 if the object was parsed correctly, -1 otherwise
  */
 int parse_component(install_type_t type, size_t array_index, cJSON* json) {
     char* componentstr;
