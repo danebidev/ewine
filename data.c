@@ -142,6 +142,13 @@ void alloc_component_array(uint8_t type, size_t length) {
     *target = new_ptr;
 }
 
+/**
+ * Allocates or reallocates memory for an array of the specified type.
+ * Parses a componenet of the specified type and stores it in the right array, at the specified index
+ * @param type The type of component to parse (TYPE_PREFIX, TYPE_WINE, or TYPE_DXVK)
+ * @param array_index The index of the right array where the component will be stored
+ * @param json The json object to parse
+ */
 int parse_component(install_type_t type, size_t array_index, cJSON* json) {
     char* componentstr;
     switch (type) {
@@ -155,7 +162,7 @@ int parse_component(install_type_t type, size_t array_index, cJSON* json) {
             componentstr = "DXVK install";
             break;
         case TYPE_INVALID:
-            ERROR("Invalid type. Should be impossible");
+            ERROR("Invalid type. Should be impossible. Please report this.");
     }
 
     if (!cJSON_IsObject(json)) {
@@ -196,7 +203,7 @@ int parse_component(install_type_t type, size_t array_index, cJSON* json) {
             data.dxvk_installs[array_index].path = path;
             break;
         case TYPE_INVALID:
-            ERROR("Invalid type. Should be impossible.");
+            ERROR("Invalid type. Should be impossible. Please report this.");
     }
 
     return 0;
@@ -219,10 +226,6 @@ void parse_component_array(cJSON* json, install_type_t type) {
     cJSON* element = NULL;
 
     cJSON_ArrayForEach(element, json) {
-        if (!cJSON_IsObject(element)) {
-            continue;
-        }
-
         if (parse_component(type, cur_element, element) == 0)
             cur_element++;
     }
@@ -240,7 +243,7 @@ void parse_component_array(cJSON* json, install_type_t type) {
             data.dxvk_count = cur_element;
             break;
         case TYPE_INVALID:
-            ERROR("Invalid type. Should be impossible.");
+            ERROR("Invalid type. Should be impossible. Please report this.");
             break;
     }
 }
