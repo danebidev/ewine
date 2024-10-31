@@ -5,20 +5,20 @@
         if (LOG_LEVEL != LOG_DEBUG || config.verbose) { \
             switch (LOG_LEVEL) {                        \
                 case LOG_ERROR:                         \
-                    printf("\e[38;5;1m==>\e[0m ");      \
+                    printf("\033[38;5;1m==>\033[0m ");  \
                     break;                              \
                 case LOG_WARNING:                       \
-                    printf("\e[38;5;3m==>\e[0m ");      \
+                    printf("\033[38;5;3m==>\033[0m ");  \
                     break;                              \
                 case LOG_INFO:                          \
-                    printf("\e[38;5;2m==>\e[0m ");      \
+                    printf("\033[38;5;2m==>\033[0m ");  \
                     break;                              \
                 case LOG_DEBUG:                         \
-                    printf("\e[38;5;0m");               \
+                    printf("\033[38;5;0m");             \
                     break;                              \
             }                                           \
             printf(__fmt, ##__VA_ARGS__);               \
-            printf("\e[0m");                            \
+            printf("\033[0m");                          \
         }                                               \
     }                                                   \
     while (0)
