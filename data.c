@@ -157,19 +157,20 @@ int parse_component(install_type_t type, size_t array_index, cJSON* json) {
         case TYPE_INVALID:
             ERROR("Invalid type. Should be impossible");
     }
+
     if (!cJSON_IsObject(json)) {
         LOG(LOG_WARNING, "A %s is not an object - ignoring it\n", componentstr);
         return -1;
     }
 
     char* name = json_get_string(json, "name");
-    if (name) {
+    if (!name) {
         LOG(LOG_WARNING, "A %s is missing the name field - ignoring it\n", componentstr);
         return -1;
     }
 
     char* path = json_get_string(json, "path");
-    if (path) {
+    if (!path) {
         LOG(LOG_WARNING, "%s %s is missing the path field - ignoring it\n", componentstr, name);
         free(name);
         return -1;
@@ -239,7 +240,7 @@ void parse_component_array(cJSON* json, install_type_t type) {
             data.dxvk_count = cur_element;
             break;
         case TYPE_INVALID:
-            // TODO?
+            ERROR("Invalid type. Should be impossible.");
             break;
     }
 }
