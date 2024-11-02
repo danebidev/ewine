@@ -34,10 +34,9 @@ void parse_argv(char* argv[], int argc, int cur_index) {
 }
 
 int main(int argc, char* argv[]) {
-    config_init();
-    data_init();
-
     int opt;
+
+    config_init();
 
     while ((opt = getopt(argc, argv, "v")) != -1) {
         switch (opt) {
@@ -49,6 +48,8 @@ int main(int argc, char* argv[]) {
                 exit(1);
         }
     }
+
+    data_init();
 
     parse_argv(argv, argc, optind);
 

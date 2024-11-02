@@ -74,7 +74,7 @@ void create_data_file() {
     }
     free(path);
 
-    LOG(LOG_INFO, "Data file not found at %s - creating it.\n", config.data_file);
+    LOG(LOG_DEBUG, "Data file not found at %s - creating it.\n", config.data_file);
 
     FILE* file;
     if ((file = fopen(config.data_file, "w")) != NULL)
@@ -254,7 +254,7 @@ void parse_component_array(cJSON* json, install_type_t type) {
  * and DXVK installation data.
  */
 void parse_data() {
-    LOG(LOG_INFO, "Parsing data file: %s\n", config.data_file);
+    LOG(LOG_DEBUG, "Parsing data file: %s\n", config.data_file);
     char* json_text = read_file(config.data_file);
 
     cJSON* json = cJSON_Parse(json_text);
