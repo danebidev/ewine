@@ -36,7 +36,7 @@ arch_type_t str_to_arch(const char* arch_str) {
  * @param arch Architecture enumeration value
  * @return "win64", "win32", or NULL if invalid
  */
-char* archstr(arch_type_t arch) {
+char* arch_to_string(arch_type_t arch) {
     if (arch == ARCH_WIN64) return "win64";
     if (arch == ARCH_WIN32) return "win32";
     return NULL;
@@ -70,7 +70,7 @@ void create_data_file() {
     remove_last_path_component(path);
 
     if (mkdirp(path) == -1) {
-        ERROR("can't create directory %s", path);
+        LOG(LOG_ERROR, "can't create directory %s", path);
     }
     free(path);
 
@@ -81,7 +81,7 @@ void create_data_file() {
         // Is saving the default config in a define even a good idea? idk, it works
         fprintf(file, BASE_CONFIG_FILE);
     else {
-        ERROR("can't write to %s\n", config.data_file);
+        LOG(LOG_ERROR, "can't write to %s\n", config.data_file);
     }
 }
 
@@ -95,11 +95,11 @@ char* json_get_string(cJSON* obj, char* key) {
     cJSON* item = cJSON_GetObjectItem(obj, key);
 
     if (!item) return NULL;
-    if (!cJSON_IsString(item)) ERROR("field %s is not a string", key);
+    if (!cJSON_IsString(item)) LOG(LOG_ERROR, "field %s is not a string", key);
 
     char* result = strdup(item->valuestring);
     if (!result) {
-        ERROR("memory allocation failed for string %s", key);
+        LOG(LOG_ERROR, "memory allocation failed for string %s", key);
     }
 
     return result;
@@ -128,7 +128,8 @@ void alloc_component_array(uint8_t type, size_t length) {
             size = sizeof(dxvk_t);
             break;
         default:
-            ERROR("invalid type");
+            LOG(LOG_ERROR, "invalid type");
+            exit(1);
     }
 
     void* new_ptr;
@@ -137,7 +138,7 @@ void alloc_component_array(uint8_t type, size_t length) {
     else
         new_ptr = reallocarray(*target, length, size);
 
-    if (!new_ptr) ERROR("memory allocation failed for %s array\n", component_type_to_string(type));
+    if (!new_ptr) LOG(LOG_ERROR, "memory allocation failed for %s array\n", component_type_to_string(type));
 
     *target = new_ptr;
 }
@@ -162,7 +163,7 @@ int parse_component(install_type_t type, size_t array_index, cJSON* json) {
             componentstr = "DXVK install";
             break;
         case TYPE_INVALID:
-            ERROR("Invalid type. Should be impossible. Please report this.");
+            LOG(LOG_ERROR, "Invalid type. Should be impossible. Please report this.");
     }
 
     if (!cJSON_IsObject(json)) {
@@ -187,6 +188,7 @@ int parse_component(install_type_t type, size_t array_index, cJSON* json) {
         case TYPE_PREFIX:
             data.prefixes[array_index].name = name;
             data.prefixes[array_index].path = path;
+            data.prefixes[array_index].binary = json_get_string(json, "binary");
             data.prefixes[array_index].wine = json_get_string(json, "wine");
             data.prefixes[array_index].dxvk = json_get_string(json, "dxvk");
 
@@ -203,7 +205,7 @@ int parse_component(install_type_t type, size_t array_index, cJSON* json) {
             data.dxvk_installs[array_index].path = path;
             break;
         case TYPE_INVALID:
-            ERROR("Invalid type. Should be impossible. Please report this.");
+            LOG(LOG_ERROR, "Invalid type. Should be impossible. Please report this.");
     }
 
     return 0;
@@ -217,10 +219,10 @@ int parse_component(install_type_t type, size_t array_index, cJSON* json) {
  */
 void parse_component_array(cJSON* json, install_type_t type) {
     if (!cJSON_IsArray(json))
-        ERROR("invalid data file, %s is supposed to be an array\n", component_type_to_string(type));
+        LOG(LOG_ERROR, "invalid data file, %s is supposed to be an array\n", component_type_to_string(type));
 
     size_t count = cJSON_GetArraySize(json);
-    alloc_component_array(type, count);
+    if (count) alloc_component_array(type, count);
 
     size_t cur_element = 0;
     cJSON* element = NULL;
@@ -230,7 +232,7 @@ void parse_component_array(cJSON* json, install_type_t type) {
             cur_element++;
     }
 
-    if (cur_element < count) alloc_component_array(type, cur_element);
+    if (cur_element < count && cur_element) alloc_component_array(type, cur_element);
 
     switch (type) {
         case TYPE_PREFIX:
@@ -243,7 +245,7 @@ void parse_component_array(cJSON* json, install_type_t type) {
             data.dxvk_count = cur_element;
             break;
         case TYPE_INVALID:
-            ERROR("Invalid type. Should be impossible. Please report this.");
+            LOG(LOG_ERROR, "Invalid type. Should be impossible. Please report this.");
             break;
     }
 }
@@ -260,7 +262,7 @@ void parse_data() {
     cJSON* json = cJSON_Parse(json_text);
     free(json_text);
 
-    if (!json) ERROR("can't parse %s\n", config.data_file);
+    if (!json) LOG(LOG_ERROR, "can't parse %s\n", config.data_file);
 
     data.prefixes = NULL;
     data.wine_installs = NULL;
@@ -295,6 +297,7 @@ void data_free() {
     for (int i = 0; i < data.prefix_count; i++) {
         free(data.prefixes[i].name);
         free(data.prefixes[i].path);
+        free(data.prefixes[i].binary);
         free(data.prefixes[i].wine);
         free(data.prefixes[i].dxvk);
     }

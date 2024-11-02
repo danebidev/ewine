@@ -18,6 +18,7 @@ typedef enum {
 typedef struct {
     char* name;
     char* path;
+    char* binary;
     char* wine;
     char* dxvk;
     arch_type_t arch;
@@ -47,7 +48,7 @@ typedef struct {
 extern data_t data;
 
 // Get an arch string from the arch_type_t (an int)
-char* archstr(arch_type_t arch);
+char* arch_to_string(arch_type_t arch);
 
 void data_init();
 void data_free();
