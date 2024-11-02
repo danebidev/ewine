@@ -7,19 +7,17 @@
             case LOG_ERROR:                                   \
                 printf("\e[38;5;1m");                         \
                 printf("error: " __fmt, ##__VA_ARGS__);       \
-                printf("\e[0m");                              \
                 break;                                        \
             case LOG_WARNING:                                 \
                 printf("\e[38;5;3m");                         \
                 printf(__fmt, ##__VA_ARGS__);                 \
-                printf("\e[0m");                              \
                 break;                                        \
             case LOG_DEBUG:                                   \
                 printf("\e[38;5;0m");                         \
                 printf(__fmt, ##__VA_ARGS__);                 \
-                printf("\e[0m");                              \
                 break;                                        \
         }                                                     \
+        printf("\e[0m");                                      \
     }                                                         \
     while (0)
 

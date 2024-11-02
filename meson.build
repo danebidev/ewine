@@ -30,6 +30,8 @@ source_files = [
   'util.c',
   'list.h',
   'list.c',
+  'run.h',
+  'run.c',
 ]
 
 executable(meson.project_name(), source_files, dependencies: [cjson])

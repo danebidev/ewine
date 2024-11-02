@@ -290,6 +290,9 @@ void data_init() {
         create_data_file();
 }
 
+void check_data() {
+}
+
 /**
  * Frees all allocated memory used by the data subsystem.
  */

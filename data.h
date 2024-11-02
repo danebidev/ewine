@@ -51,4 +51,5 @@ extern data_t data;
 char* arch_to_string(arch_type_t arch);
 
 void data_init();
+void check_data();
 void data_free();
