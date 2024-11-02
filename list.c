@@ -11,9 +11,10 @@ void list_prefixes() {
     for (int cur_prefix = 0; cur_prefix < data.prefix_count; cur_prefix++) {
         printf("    Name: %s\n", data.prefixes[cur_prefix].name);
         printf("    Path: %s\n", data.prefixes[cur_prefix].path);
+        printf("    Binary: %s\n", data.prefixes[cur_prefix].binary);
         printf("    Wine: %s\n", data.prefixes[cur_prefix].wine);
         printf("    DXVK: %s\n", data.prefixes[cur_prefix].dxvk);
-        printf("    Arch: %s\n", archstr(data.prefixes[cur_prefix].arch));
+        printf("    Arch: %s\n", arch_to_string(data.prefixes[cur_prefix].arch));
         if (cur_prefix < data.prefix_count - 1) printf("\n");
     }
 }
@@ -39,8 +40,8 @@ void list_dxvk_installs() {
 /**
  * @return 0 if the command completed succesfully, -1 otherwise
  */
-int command_list(char *argv[], int argc, int cur_index) {
-    if (cur_index++ >= argc) {
+int command_list(char *argv[], int argc, int args_index) {
+    if (args_index++ >= argc) {
         list_prefixes();
         printf("\n");
         list_wine_installs();
@@ -48,15 +49,15 @@ int command_list(char *argv[], int argc, int cur_index) {
         list_dxvk_installs();
     }
     else {
-        for (; cur_index < argc; cur_index++) {
-            if (strcmp(argv[cur_index], "prefix"))
+        for (; args_index < argc; args_index++) {
+            if (strcmp(argv[args_index], "prefix"))
                 list_prefixes();
-            else if (strcmp(argv[cur_index], "wine"))
+            else if (strcmp(argv[args_index], "wine"))
                 list_wine_installs();
-            else if (strcmp(argv[cur_index], "dxvk"))
+            else if (strcmp(argv[args_index], "dxvk"))
                 list_dxvk_installs();
             else {
-                printf("%s: Unrecognized component type '%s'. Should be one of 'prefix', 'wine' or 'dxvk'", PROGRAM_NAME, argv[cur_index]);
+                printf("%s: Unrecognized component type '%s'. Should be one of 'prefix', 'wine' or 'dxvk'", PROGRAM_NAME, argv[args_index]);
                 return -1;
             }
         }
