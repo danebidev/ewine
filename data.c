@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "config.h"
@@ -172,14 +173,21 @@ int parse_component(install_type_t type, size_t array_index, cJSON* json) {
     }
 
     char* name = json_get_string(json, "name");
-    if (!name) {
-        LOG(LOG_WARNING, "A %s is missing the name field - ignoring it\n", componentstr);
+    if (!name || name[0] == '\0') {
+        if (!name)
+            LOG(LOG_WARNING, "A %s is missing the name field - ignoring it\n", componentstr);
+        else
+            LOG(LOG_WARNING, "A %s has an empty name field - ignoring it\n", componentstr);
         return -1;
     }
 
     char* path = json_get_string(json, "path");
-    if (!path) {
-        LOG(LOG_WARNING, "%s %s is missing the path field - ignoring it\n", componentstr, name);
+    if (!path || path[0] == '\0') {
+        if (!path)
+            LOG(LOG_WARNING, "%s %s is missing the path field - ignoring it\n", componentstr, name);
+        else
+            LOG(LOG_WARNING, "%s %s has an empty path field - ignoring it\n", componentstr, name);
+
         free(name);
         return -1;
     }
@@ -189,8 +197,8 @@ int parse_component(install_type_t type, size_t array_index, cJSON* json) {
             data.prefixes[array_index].name = name;
             data.prefixes[array_index].path = path;
             data.prefixes[array_index].binary = json_get_string(json, "binary");
-            data.prefixes[array_index].wine = json_get_string(json, "wine");
-            data.prefixes[array_index].dxvk = json_get_string(json, "dxvk");
+            data.prefixes[array_index].wine_name = json_get_string(json, "wine");
+            data.prefixes[array_index].dxvk_name = json_get_string(json, "dxvk");
 
             char* arch = json_get_string(json, "arch");
             data.prefixes[array_index].arch = str_to_arch(arch);
@@ -290,7 +298,112 @@ void data_init() {
         create_data_file();
 }
 
+int check_file_perms(char* dir_path, char* name, int perm) {
+    int strsize = strlen(dir_path) + strlen(name) + 2;
+    char* path = malloc(strsize);
+    if (!path) {
+        LOG(LOG_ERROR, "memory allocation failed for wine binary path\n");
+        exit(-1);
+    }
+
+    snprintf(path, strsize, "%s/%s", dir_path, name);
+
+    int result = access(path, perm);
+    free(path);
+
+    return result;
+}
+
+void check_wine(wine_t wine) {
+    if (check_file_perms(wine.path, "wine", X_OK))
+        LOG(LOG_WARNING, "'wine' binary in wine '%s' is not executable\n", wine.name);
+
+    if (check_file_perms(wine.path, "wine64", X_OK))
+        LOG(LOG_WARNING, "'wine64' binary in wine '%s' is not executable\n", wine.name);
+
+    if (check_file_perms(wine.path, "wineboot", X_OK))
+        LOG(LOG_WARNING, "'wineboot' binary in wine '%s' is not executable\n", wine.name);
+}
+
+void check_dxvk(dxvk_t dxvk) {
+    if (check_file_perms(dxvk.path, "x64", R_OK))
+        LOG(LOG_WARNING, "'x64' directory in dxvk '%s' is not accessible\n", dxvk.name);
+
+    if (check_file_perms(dxvk.path, "x32", R_OK))
+        LOG(LOG_WARNING, "'x32' directory in dxvk '%s' is not accessible\n", dxvk.name);
+}
+
+void check_prefix(prefix_t prefix) {
+    if (access(prefix.path, R_OK) == -1)
+        LOG(LOG_WARNING, "can't write to %s for prefix '%s'\n", prefix.path, prefix.name);
+
+    if (access(prefix.binary, R_OK) == -1)
+        LOG(LOG_WARNING, "can't read %s for prefix '%s'\n", prefix.binary, prefix.name);
+
+    if (prefix.wine_name != NULL) {
+        wine_t* wine = NULL;
+        for (int i = 0; i < data.wine_count; i++) {
+            if (strcmp(data.wine_installs[i].name, prefix.wine_name) == 0) {
+                wine = &data.wine_installs[i];
+                break;
+            }
+        }
+
+        if (!wine) {
+            LOG(LOG_WARNING, "Prefix %s has an invalid wine version '%s'", prefix.name, prefix.wine_name);
+            if (data.wine_count) {
+                LOG(LOG_WARNING, " - setting to '%s'\n", data.wine_installs[0].name);
+                wine = &data.wine_installs[0];
+            }
+            else {
+                LOG(LOG_WARNING, " and no wine installs were found - unsetting wine version for this prefix.\n");
+                wine = NULL;
+            }
+        }
+
+        prefix.wine = wine;
+    }
+
+    if (prefix.dxvk_name != NULL) {
+        dxvk_t* dxvk = NULL;
+        for (int i = 0; i < data.dxvk_count; i++) {
+            if (strcmp(data.dxvk_installs[i].name, prefix.dxvk_name) == 0) {
+                dxvk = &data.dxvk_installs[i];
+                break;
+            }
+        }
+
+        if (!dxvk) {
+            LOG(LOG_WARNING, "Prefix %s has an invalid DXVK version '%s'", prefix.name, prefix.dxvk_name);
+            if (data.dxvk_count) {
+                LOG(LOG_WARNING, " - setting to '%s'\n", data.dxvk_installs[0].name);
+                dxvk = &data.dxvk_installs[0];
+            }
+            else {
+                LOG(LOG_WARNING, " and no DXVK installs were found - unsetting DXVK version for this prefix.\n");
+                dxvk = NULL;
+            }
+        }
+
+        prefix.dxvk = dxvk;
+    }
+
+    if (prefix.arch == ARCH_INVALID) {
+        LOG(LOG_WARNING, "Prefix %s has an invalid wine prefix arch - setting to 'win64'\n", prefix.name);
+        prefix.arch = ARCH_WIN64;
+    }
+}
+
 void check_data() {
+    for (int i = 0; i < data.wine_count; i++) {
+        check_wine(data.wine_installs[i]);
+    }
+    for (int i = 0; i < data.dxvk_count; i++) {
+        check_dxvk(data.dxvk_installs[i]);
+    }
+    for (int i = 0; i < data.prefix_count; i++) {
+        check_prefix(data.prefixes[i]);
+    }
 }
 
 /**
@@ -301,8 +414,8 @@ void data_free() {
         free(data.prefixes[i].name);
         free(data.prefixes[i].path);
         free(data.prefixes[i].binary);
-        free(data.prefixes[i].wine);
-        free(data.prefixes[i].dxvk);
+        free(data.prefixes[i].wine_name);
+        free(data.prefixes[i].dxvk_name);
     }
     free(data.prefixes);
 

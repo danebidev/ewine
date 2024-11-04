@@ -18,21 +18,28 @@ typedef enum {
 typedef struct {
     char* name;
     char* path;
-    char* binary;
-    char* wine;
-    char* dxvk;
-    arch_type_t arch;
-} prefix_t;
-
-typedef struct {
-    char* name;
-    char* path;
 } wine_t;
 
 typedef struct {
     char* name;
     char* path;
 } dxvk_t;
+
+typedef struct {
+    char* name;
+    char* path;
+    char* binary;
+    arch_type_t arch;
+
+    // We keep both component names and later resolve them to component references.
+    // I don't really like this method but changing it would require too much work.
+    // Ideally we would be resolving wine/dxvk names when we get them from the json.
+    char* wine_name;
+    wine_t* wine;
+
+    char* dxvk_name;
+    dxvk_t* dxvk;
+} prefix_t;
 
 typedef struct {
     int prefix_count;
