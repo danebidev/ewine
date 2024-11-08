@@ -314,43 +314,43 @@ int check_file_perms(char* dir_path, char* name, int perm) {
     return result;
 }
 
-void check_wine(wine_t wine) {
-    if (check_file_perms(wine.path, "wine", X_OK))
-        LOG(LOG_WARNING, "'wine' binary in wine '%s' is not executable\n", wine.name);
+void check_wine(wine_t* wine) {
+    if (check_file_perms(wine->path, "wine", X_OK))
+        LOG(LOG_WARNING, "'wine' binary in wine '%s' is not executable\n", wine->name);
 
-    if (check_file_perms(wine.path, "wine64", X_OK))
-        LOG(LOG_WARNING, "'wine64' binary in wine '%s' is not executable\n", wine.name);
+    if (check_file_perms(wine->path, "wine64", X_OK))
+        LOG(LOG_WARNING, "'wine64' binary in wine '%s' is not executable\n", wine->name);
 
-    if (check_file_perms(wine.path, "wineboot", X_OK))
-        LOG(LOG_WARNING, "'wineboot' binary in wine '%s' is not executable\n", wine.name);
+    if (check_file_perms(wine->path, "wineboot", X_OK))
+        LOG(LOG_WARNING, "'wineboot' binary in wine '%s' is not executable\n", wine->name);
 }
 
-void check_dxvk(dxvk_t dxvk) {
-    if (check_file_perms(dxvk.path, "x64", R_OK))
-        LOG(LOG_WARNING, "'x64' directory in dxvk '%s' is not accessible\n", dxvk.name);
+void check_dxvk(dxvk_t* dxvk) {
+    if (check_file_perms(dxvk->path, "x64", R_OK))
+        LOG(LOG_WARNING, "'x64' directory in dxvk '%s' is not accessible\n", dxvk->name);
 
-    if (check_file_perms(dxvk.path, "x32", R_OK))
-        LOG(LOG_WARNING, "'x32' directory in dxvk '%s' is not accessible\n", dxvk.name);
+    if (check_file_perms(dxvk->path, "x32", R_OK))
+        LOG(LOG_WARNING, "'x32' directory in dxvk '%s' is not accessible\n", dxvk->name);
 }
 
-void check_prefix(prefix_t prefix) {
-    if (access(prefix.path, R_OK) == -1)
-        LOG(LOG_WARNING, "can't write to %s for prefix '%s'\n", prefix.path, prefix.name);
+void check_prefix(prefix_t* prefix) {
+    if (access(prefix->path, R_OK) == -1)
+        LOG(LOG_WARNING, "can't write to %s for prefix '%s'\n", prefix->path, prefix->name);
 
-    if (access(prefix.binary, R_OK) == -1)
-        LOG(LOG_WARNING, "can't read %s for prefix '%s'\n", prefix.binary, prefix.name);
+    if (access(prefix->binary, R_OK) == -1)
+        LOG(LOG_WARNING, "can't read %s for prefix '%s'\n", prefix->binary, prefix->name);
 
-    if (prefix.wine_name != NULL) {
+    if (prefix->wine_name != NULL) {
         wine_t* wine = NULL;
         for (int i = 0; i < data.wine_count; i++) {
-            if (strcmp(data.wine_installs[i].name, prefix.wine_name) == 0) {
+            if (strcmp(data.wine_installs[i].name, prefix->wine_name) == 0) {
                 wine = &data.wine_installs[i];
                 break;
             }
         }
 
         if (!wine) {
-            LOG(LOG_WARNING, "Prefix %s has an invalid wine version '%s'", prefix.name, prefix.wine_name);
+            LOG(LOG_WARNING, "Prefix %s has an invalid wine version '%s'", prefix->name, prefix->wine_name);
             if (data.wine_count) {
                 LOG(LOG_WARNING, " - setting to '%s'\n", data.wine_installs[0].name);
                 wine = &data.wine_installs[0];
@@ -361,20 +361,20 @@ void check_prefix(prefix_t prefix) {
             }
         }
 
-        prefix.wine = wine;
+        prefix->wine = wine;
     }
 
-    if (prefix.dxvk_name != NULL) {
+    if (prefix->dxvk_name != NULL) {
         dxvk_t* dxvk = NULL;
         for (int i = 0; i < data.dxvk_count; i++) {
-            if (strcmp(data.dxvk_installs[i].name, prefix.dxvk_name) == 0) {
+            if (strcmp(data.dxvk_installs[i].name, prefix->dxvk_name) == 0) {
                 dxvk = &data.dxvk_installs[i];
                 break;
             }
         }
 
         if (!dxvk) {
-            LOG(LOG_WARNING, "Prefix %s has an invalid DXVK version '%s'", prefix.name, prefix.dxvk_name);
+            LOG(LOG_WARNING, "Prefix %s has an invalid DXVK version '%s'", prefix->name, prefix->dxvk_name);
             if (data.dxvk_count) {
                 LOG(LOG_WARNING, " - setting to '%s'\n", data.dxvk_installs[0].name);
                 dxvk = &data.dxvk_installs[0];
@@ -385,24 +385,24 @@ void check_prefix(prefix_t prefix) {
             }
         }
 
-        prefix.dxvk = dxvk;
+        prefix->dxvk = dxvk;
     }
 
-    if (prefix.arch == ARCH_INVALID) {
-        LOG(LOG_WARNING, "Prefix %s has an invalid wine prefix arch - setting to 'win64'\n", prefix.name);
-        prefix.arch = ARCH_WIN64;
+    if (prefix->arch == ARCH_INVALID) {
+        LOG(LOG_WARNING, "Prefix %s has an invalid wine prefix arch - setting to 'win64'\n", prefix->name);
+        prefix->arch = ARCH_WIN64;
     }
 }
 
 void check_data() {
     for (int i = 0; i < data.wine_count; i++) {
-        check_wine(data.wine_installs[i]);
+        check_wine(&data.wine_installs[i]);
     }
     for (int i = 0; i < data.dxvk_count; i++) {
-        check_dxvk(data.dxvk_installs[i]);
+        check_dxvk(&data.dxvk_installs[i]);
     }
     for (int i = 0; i < data.prefix_count; i++) {
-        check_prefix(data.prefixes[i]);
+        check_prefix(&data.prefixes[i]);
     }
 }
 
