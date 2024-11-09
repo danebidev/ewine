@@ -12,13 +12,13 @@ void config_init() {
 
     // If XDG_DATA_HOME is defined use that as default data directory
     if (xdg_data_home) {
-        snprintf(config.data_file, PATH_SIZE, "%s/%s/config.json", xdg_data_home, PROGRAM_NAME);
-        snprintf(config.prefix_dir, PATH_SIZE, "%s/%s/prefix", xdg_data_home, PROGRAM_NAME);
+        snprintf(config.data_file, sizeof(config.data_file), "%s/%s/config.json", xdg_data_home, PROGRAM_NAME);
+        snprintf(config.prefix_dir, sizeof(config.prefix_dir), "%s/%s/prefix", xdg_data_home, PROGRAM_NAME);
     }
     // Fallback to HOME/.local/share/abc if XDG_DATA_HOME is not set
     else if (home) {
-        snprintf(config.data_file, PATH_SIZE, "%s/%s/config.json", home, PROGRAM_NAME);
-        snprintf(config.prefix_dir, PATH_SIZE, "%s/%s/prefix", home, PROGRAM_NAME);
+        snprintf(config.data_file, sizeof(config.data_file), "%s/%s/config.json", home, PROGRAM_NAME);
+        snprintf(config.prefix_dir, sizeof(config.prefix_dir), "%s/%s/prefix", home, PROGRAM_NAME);
     }
     else {
         // If both XDG_DATA_HOME and HOME are not defined

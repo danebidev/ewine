@@ -1,6 +1,7 @@
 #include "data.h"
 
 #include <cjson/cJSON.h>
+#include <linux/limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -266,6 +267,9 @@ void parse_component_array(cJSON* json, install_type_t type) {
 void parse_data() {
     LOG(LOG_DEBUG, "Parsing data file: %s\n", config.data_file);
     char* json_text = read_file(config.data_file);
+    if (!json_text) {
+        LOG(LOG_ERROR, "couldn't read data file at %s", config.data_file);
+    }
 
     cJSON* json = cJSON_Parse(json_text);
     free(json_text);
@@ -299,17 +303,11 @@ void data_init() {
 }
 
 int check_file_perms(char* dir_path, char* name, int perm) {
-    int strsize = strlen(dir_path) + strlen(name) + 2;
-    char* path = malloc(strsize);
-    if (!path) {
-        LOG(LOG_ERROR, "memory allocation failed for wine binary path\n");
-        exit(-1);
-    }
+    char path[PATH_MAX];
 
-    snprintf(path, strsize, "%s/%s", dir_path, name);
+    snprintf(path, sizeof(path), "%s/%s", dir_path, name);
 
     int result = access(path, perm);
-    free(path);
 
     return result;
 }

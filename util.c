@@ -1,6 +1,7 @@
 #include "util.h"
 
 #include <errno.h>
+#include <linux/limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,7 +22,6 @@ void remove_last_path_component(const char* path) {
 char* read_file(const char* path) {
     FILE* file = fopen(path, "r");
     if (!file) {
-        perror("error: failed to read file");
         return NULL;
     }
 
@@ -32,7 +32,7 @@ char* read_file(const char* path) {
 
     char* buffer = (char*)malloc(filesize + 1);  // +1 for null terminator
     if (!buffer) {
-        printf("error: couldn't allocate memory");
+        LOG(LOG_ERROR, "couldn't allocate memory");
         exit(1);
     }
 
@@ -45,7 +45,7 @@ char* read_file(const char* path) {
 }
 
 int mkdirp(const char* path) {
-    char tmp[PATH_SIZE];
+    char tmp[PATH_MAX];
     char* p = NULL;
     size_t len;
 

@@ -44,9 +44,8 @@ int run(prefix_t* prefix) {
     }
 
     if (wine_pid == 0) {
-        int wine_length = strlen(prefix->wine->path) + 8;
-        char* wine_path = malloc(wine_length);
-        snprintf(wine_path, wine_length, "%s/wine64", prefix->wine->path);
+        char wine_path[PATH_MAX];
+        snprintf(wine_path, sizeof(wine_path), "%s/wine64", prefix->wine->path);
         printf("%s", wine_path);
 
         setenv("WINEPREFIX", prefix->path, 0);

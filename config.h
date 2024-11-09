@@ -1,11 +1,10 @@
 #pragma once
 
-#define PATH_SIZE 512
-
+#include <linux/limits.h>
 typedef struct {
     _Bool verbose;
-    char data_file[PATH_SIZE];
-    char prefix_dir[PATH_SIZE];
+    char data_file[PATH_MAX];
+    char prefix_dir[PATH_MAX];
 } config_t;
 
 extern config_t config;
