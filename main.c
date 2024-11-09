@@ -54,7 +54,6 @@ int main(int argc, char* argv[]) {
             case 'h':
                 usage();
                 exit(0);
-                break;
             case '?':
                 printf("Try '%s -h' for more information", PROGRAM_NAME);
                 exit(1);
