@@ -1,5 +1,6 @@
 #include "run.h"
 
+#include <linux/limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,7 +11,72 @@
 #include "data.h"
 #include "util.h"
 
-int apply_dxvk(prefix_t* _) {
+int remove_dxvk() {
+    return 0;
+}
+
+int check_reg_entry(char* entry) {
+    char* dxvk_registry_entries[] = { "d3d8", "d3d9", "d3d10core", "d3d11", "dxgi" };
+    for (size_t i = 0; i < sizeof(dxvk_registry_entries) / sizeof(char*); i++) {
+        char pattern[30];
+
+        snprintf(pattern, sizeof(pattern), "\"%s\"=\"native\"", dxvk_registry_entries[i]);
+        LOG(LOG_DEBUG, "Searching for pattern '%s' in user.reg\n", pattern);
+        if (strstr(entry, pattern)) {
+            LOG(LOG_DEBUG, "Found dll overrride '%s'\n", dxvk_registry_entries[i]);
+            return 1;
+        }
+
+        snprintf(pattern, sizeof(pattern), "\"%s\"=\"native,builtin\"", dxvk_registry_entries[i]);
+        LOG(LOG_DEBUG, "Searching for pattern '%s' in user.reg\n", pattern);
+        if (strstr(entry, pattern)) {
+            LOG(LOG_DEBUG, "Found dll overrride '%s'\n", dxvk_registry_entries[i]);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int is_dxvk_applied(prefix_t* prefix) {
+    char reg_path[PATH_MAX];
+
+    snprintf(reg_path, sizeof(reg_path), "%s/user.reg", prefix->path);
+
+    FILE* reg_file = fopen(reg_path, "r");
+    char line[1024];  // Surely no line is longer than 1024 characters
+    int dxvk_found = 0;
+
+    while (fgets(line, sizeof(line), reg_file)) {
+        if (strstr(line, "[Software\\\\Wine\\\\DllOverrides]") != NULL) {
+            while (fgets(line, sizeof(line), reg_file)) {
+                // Sections usually end with a blank line so we
+                // can use that to check for end of section
+                // Shouldn't break if the user manually removes the
+                // blank line, it's just gonna continue reading
+                if (line[0] == '\n' || line[0] == '\r') break;
+                if (check_reg_entry(line)) {
+                    dxvk_found = 1;
+                    goto end;
+                }
+            }
+        }
+    }
+
+end:
+    fclose(reg_file);
+
+    return dxvk_found;
+}
+
+int apply_dxvk(prefix_t* prefix) {
+    if (is_dxvk_applied(prefix)) {
+        LOG(LOG_DEBUG, "Removing dxvk from prefix\n");
+        if (remove_dxvk() == -1) {
+            LOG(LOG_ERROR, "dxvk couldn't be removed\n");
+        }
+    }
+
     return 0;
 }
 
