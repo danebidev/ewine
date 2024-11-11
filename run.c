@@ -11,13 +11,56 @@
 #include "data.h"
 #include "util.h"
 
-int remove_dxvk() {
+int dxvk_remove_entries(prefix_t* prefix) {
+    return 0;
+}
+
+// This just ignores if a dll doesn't exist, since it
+// could be missing because of an old wine/dxvk version.
+int dxvk_remove_files(prefix_t* prefix) {
+    char* dlls[] = {
+        "system32/dxgi.dll",
+        "system32/d3d8.dll",
+        "system32/d3d9.dll",
+        "system32/d3d10core.dll",
+        "system32/d3d11.dll",
+
+        "syswow64/dxgi.dll",
+        "syswow64/d3d8.dll",
+        "syswow64/d3d9.dll",
+        "syswow64/d3d10core.dll",
+        "syswow64/d3d11.dll"
+    };
+
+    char full_path[PATH_MAX];
+    for (size_t i = 0; i < sizeof(dlls) / sizeof(dlls[0]); i++) {
+        snprintf(full_path, sizeof(full_path), "%s/drive_c/windows/%s", prefix->path, dlls[i]);
+        if (access(full_path, F_OK) == 0) {
+            LOG(LOG_DEBUG, "Removing %s\n", full_path);
+            if (remove(full_path) != 0) {
+                LOG(LOG_ERROR, "Failed to remove %s\n", full_path);
+                return -1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+int dxvk_remove(prefix_t* prefix) {
+    if (dxvk_remove_entries(prefix) == -1) {
+        LOG(LOG_ERROR, "DXVK registry entries couldn't be removed\n");
+    }
+
+    if (dxvk_remove_files(prefix) == -1) {
+    }
+
     return 0;
 }
 
 int check_reg_entry(char* entry) {
     char* dxvk_registry_entries[] = { "d3d8", "d3d9", "d3d10core", "d3d11", "dxgi" };
-    for (size_t i = 0; i < sizeof(dxvk_registry_entries) / sizeof(char*); i++) {
+    for (size_t i = 0; i < sizeof(dxvk_registry_entries) / sizeof(dxvk_registry_entries[0]); i++) {
         char pattern[30];
 
         snprintf(pattern, sizeof(pattern), "\"%s\"=\"native\"", dxvk_registry_entries[i]);
@@ -72,8 +115,8 @@ end:
 int apply_dxvk(prefix_t* prefix) {
     if (is_dxvk_applied(prefix)) {
         LOG(LOG_DEBUG, "Removing dxvk from prefix\n");
-        if (remove_dxvk() == -1) {
-            LOG(LOG_ERROR, "dxvk couldn't be removed\n");
+        if (dxvk_remove(prefix) == -1) {
+            LOG(LOG_ERROR, "DXVK couldn't be removed\n");
         }
     }
 
@@ -95,7 +138,7 @@ prefix_t* get_prefix(char* prefix_name) {
 
 int run(prefix_t* prefix) {
     if (apply_dxvk(prefix) == -1) {
-        LOG(LOG_ERROR, "failed to apply dxvk setting\n");
+        LOG(LOG_ERROR, "failed to apply DXVK setting\n");
         return -1;
     }
 
@@ -112,12 +155,14 @@ int run(prefix_t* prefix) {
     if (wine_pid == 0) {
         char wine_path[PATH_MAX];
         snprintf(wine_path, sizeof(wine_path), "%s/wine64", prefix->wine->path);
-        printf("%s", wine_path);
 
         setenv("WINEPREFIX", prefix->path, 0);
 
         char* args[] = { "wine64", prefix->binary, NULL };
         execv(wine_path, args);
+        // For when i don't want wine to spam my output
+        // Remember to change before commit
+        // execl("ls", NULL);
     }
 
     return 0;
