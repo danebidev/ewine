@@ -12,6 +12,62 @@
 #include "util.h"
 
 int dxvk_remove_entries(prefix_t* prefix) {
+    char reg_file_path[PATH_MAX];
+    snprintf(reg_file_path, sizeof(reg_file_path), "%s/user.reg", prefix->path);
+
+    char tmp_file_path[PATH_MAX];
+    snprintf(tmp_file_path, sizeof(tmp_file_path) + 4, "%s.tmp", reg_file_path);
+
+    FILE* reg_file = fopen(reg_file_path, "r");
+    FILE* tmp_file = fopen(tmp_file_path, "w");
+
+    char line[512];
+    int in_dll_overrides = 0;
+    char* dll_overrides[] = { "d3d8", "d3d9", "d3d10core", "d3d11", "dxgi" };
+
+    while (fgets(line, sizeof(line), reg_file)) {
+        if (strstr(line, "[Software\\\\Wine\\\\DllOverrides]") != NULL) {
+            in_dll_overrides = 1;
+            fputs(line, tmp_file);
+            continue;
+        }
+
+        if (!in_dll_overrides) {
+            fputs(line, tmp_file);
+            continue;
+        }
+
+        if (line[0] == '[' || line[0] == '\n' || line[0] == '\r') {
+            in_dll_overrides = 0;
+            fputs(line, tmp_file);
+            continue;
+        }
+
+        char pattern[50];
+
+        int found = 0;
+        for (size_t i = 0; i < sizeof(dll_overrides) / sizeof(dll_overrides[0]); i++) {
+            snprintf(pattern, sizeof(pattern), "\"%s\"=", dll_overrides[i]);
+            if (strstr(line, pattern) != NULL) {
+                found = 1;
+                break;
+            }
+        }
+
+        if (found) continue;
+
+        fputs(line, tmp_file);
+    }
+
+    if (rename(tmp_file_path, reg_file_path) == -1) {
+        LOG(LOG_ERROR, "updating registry file at %s failed\n", reg_file_path);
+        remove(tmp_file_path);
+        return 1;
+    }
+
+    fclose(reg_file);
+    fclose(tmp_file);
+
     return 0;
 }
 
@@ -53,6 +109,7 @@ int dxvk_remove(prefix_t* prefix) {
     }
 
     if (dxvk_remove_files(prefix) == -1) {
+        LOG(LOG_ERROR, "DXVK dlls couldn't be removed\n");
     }
 
     return 0;
@@ -159,10 +216,11 @@ int run(prefix_t* prefix) {
         setenv("WINEPREFIX", prefix->path, 0);
 
         char* args[] = { "wine64", prefix->binary, NULL };
-        execv(wine_path, args);
+
         // For when i don't want wine to spam my output
         // Remember to change before commit
-        // execl("ls", NULL);
+        // execl("exit", "0", NULL);
+        execv(wine_path, args);
     }
 
     return 0;
