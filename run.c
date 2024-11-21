@@ -11,6 +11,16 @@
 #include "data.h"
 #include "util.h"
 
+static const char* const DXVK_DLLS[] = {
+    "d3d8",
+    "d3d9",
+    "d3d10core",
+    "d3d11",
+    "dxgi",
+};
+
+static const size_t DXVK_DLLS_COUNT = sizeof(DXVK_DLLS) / sizeof(DXVK_DLLS[0]);
+
 int dxvk_remove_entries(prefix_t* prefix) {
     char reg_file_path[PATH_MAX];
     snprintf(reg_file_path, sizeof(reg_file_path), "%s/user.reg", prefix->path);
@@ -20,11 +30,20 @@ int dxvk_remove_entries(prefix_t* prefix) {
     snprintf(tmp_file_path, sizeof(tmp_file_path), "%s.tmp", reg_file_path);
 
     FILE* reg_file = fopen(reg_file_path, "r");
+    if (!reg_file) {
+        LOG(LOG_ERROR, "Failed to open %s\n", reg_file_path);
+        return -1;
+    }
+
     FILE* tmp_file = fopen(tmp_file_path, "w");
+    if (!tmp_file) {
+        fclose(reg_file);
+        LOG(LOG_ERROR, "Failed to open %s\n", tmp_file_path);
+        return -1;
+    }
 
     char line[512];
     int in_dll_overrides = 0;
-    char* dll_overrides[] = { "d3d8", "d3d9", "d3d10core", "d3d11", "dxgi" };
 
     while (fgets(line, sizeof(line), reg_file)) {
         if (strstr(line, "[Software\\\\Wine\\\\DllOverrides]") != NULL) {
@@ -47,8 +66,8 @@ int dxvk_remove_entries(prefix_t* prefix) {
         char pattern[50];
 
         int found = 0;
-        for (size_t i = 0; i < sizeof(dll_overrides) / sizeof(dll_overrides[0]); i++) {
-            snprintf(pattern, sizeof(pattern), "\"%s\"=", dll_overrides[i]);
+        for (size_t i = 0; i < DXVK_DLLS_COUNT; i++) {
+            snprintf(pattern, sizeof(pattern), "\"%s\"=", DXVK_DLLS[i]);
             if (strstr(line, pattern) != NULL) {
                 found = 1;
                 break;
@@ -60,14 +79,13 @@ int dxvk_remove_entries(prefix_t* prefix) {
         fputs(line, tmp_file);
     }
 
+    if (reg_file) fclose(reg_file);
+    if (tmp_file) fclose(tmp_file);
+
     if (rename(tmp_file_path, reg_file_path) == -1) {
-        LOG(LOG_ERROR, "updating registry file at %s failed\n", reg_file_path);
-        remove(tmp_file_path);
+        LOG(LOG_ERROR, "failed updating registry file at %s\n", reg_file_path);
         return 1;
     }
-
-    fclose(reg_file);
-    fclose(tmp_file);
 
     return 0;
 }
@@ -75,28 +93,19 @@ int dxvk_remove_entries(prefix_t* prefix) {
 // This just ignores if a dll doesn't exist, since it
 // could be missing because of an old wine/dxvk version.
 int dxvk_remove_files(prefix_t* prefix) {
-    char* dlls[] = {
-        "system32/dxgi.dll",
-        "system32/d3d8.dll",
-        "system32/d3d9.dll",
-        "system32/d3d10core.dll",
-        "system32/d3d11.dll",
-
-        "syswow64/dxgi.dll",
-        "syswow64/d3d8.dll",
-        "syswow64/d3d9.dll",
-        "syswow64/d3d10core.dll",
-        "syswow64/d3d11.dll"
-    };
-
     char full_path[PATH_MAX];
-    for (size_t i = 0; i < sizeof(dlls) / sizeof(dlls[0]); i++) {
-        snprintf(full_path, sizeof(full_path), "%s/drive_c/windows/%s", prefix->path, dlls[i]);
-        if (access(full_path, F_OK) == 0) {
-            LOG(LOG_DEBUG, "Removing %s\n", full_path);
-            if (remove(full_path) != 0) {
-                LOG(LOG_ERROR, "Failed to remove %s\n", full_path);
-                return -1;
+
+    for (int i = 0; i < 2; i++) {
+        const char* dirname = i == 0 ? "system32" : "syswow64";
+
+        for (size_t j = 0; j < DXVK_DLLS_COUNT; j++) {
+            snprintf(full_path, sizeof(full_path), "%s/drive_c/windows/%s/%s.dll", prefix->path, dirname, DXVK_DLLS[j]);
+            if (access(full_path, F_OK) == 0) {
+                LOG(LOG_DEBUG, "Removing %s\n", full_path);
+                if (remove(full_path) != 0) {
+                    LOG(LOG_ERROR, "Failed to remove %s\n", full_path);
+                    return -1;
+                }
             }
         }
     }
@@ -138,18 +147,27 @@ int dxvk_add_entries(prefix_t* prefix) {
     snprintf(tmp_reg_path, sizeof(tmp_reg_path), "%s/user.reg.tmp", prefix->path);
 
     FILE* reg = fopen(reg_path, "r");
+    if (!reg) {
+        LOG(LOG_ERROR, "Failed to open %s\n", reg_path);
+        return -1;
+    }
+
     FILE* reg_tmp = fopen(tmp_reg_path, "w");
+    if (!reg_tmp) {
+        LOG(LOG_ERROR, "Failed to open %s\n", tmp_reg_path);
+        return -1;
+    }
 
     char line[1024];
     while (fgets(line, sizeof(line), reg)) {
         fputs(line, reg_tmp);
 
         if (strstr(line, "[Software\\\\Wine\\\\DllOverrides]") != NULL) {
-            fputs("\"d3d8\"=\"native,builtin\"\n", reg_tmp);
-            fputs("\"d3d9\"=\"native,builtin\"\n", reg_tmp);
-            fputs("\"d3d10core\"=\"native,builtin\"\n", reg_tmp);
-            fputs("\"d3d11\"=\"native,builtin\"\n", reg_tmp);
-            fputs("\"dxgi\"=\"native,builtin\"\n", reg_tmp);
+            for (size_t i = 0; i < DXVK_DLLS_COUNT; i++) {
+                char dll_override[30];
+                snprintf(dll_override, sizeof(dll_override), "\"%s\"=\"native,builtin\"\n", DXVK_DLLS[i]);
+                fputs(dll_override, reg_tmp);
+            }
         }
     }
 
@@ -162,25 +180,17 @@ int dxvk_add_entries(prefix_t* prefix) {
 }
 
 int dxvk_copy_dlls(prefix_t* prefix) {
-    char destination_path[PATH_MAX];
-    char dlls_path[PATH_MAX];
     char command[PATH_MAX * 2 + 9];
 
-    snprintf(destination_path, sizeof(destination_path), "%s/drive_c/windows/system32", prefix->path);
-    snprintf(dlls_path, sizeof(dlls_path), "%s/x64", prefix->dxvk->path);
+    for (int i = 0; i < 2; i++) {
+        char* windows_subdir = i == 0 ? "system32" : "syswow64";
+        char* dxvk_subdir = i == 0 ? "x32" : "x64";
 
-    snprintf(command, sizeof(command), "cp \"%s\"/* \"%s\"", dlls_path, destination_path);
+        snprintf(command, sizeof(command), "cp \"%s/%s\"/* \"%s/drive_c/windows/%s\"", prefix->dxvk->path, dxvk_subdir, prefix->path, windows_subdir);
 
-    LOG(LOG_DEBUG, "Running command: %s\n", command);
-    if (system(command) != 0) return -1;
-
-    snprintf(destination_path, sizeof(destination_path), "%s/drive_c/windows/syswow64", prefix->path);
-    snprintf(dlls_path, sizeof(dlls_path), "%s/x32", prefix->dxvk->path);
-
-    snprintf(command, sizeof(command), "cp \"%s\"/* \"%s\"", dlls_path, destination_path);
-
-    LOG(LOG_DEBUG, "Running command: %s\n", command);
-    if (system(command) != 0) return -1;
+        LOG(LOG_DEBUG, "Running command: %s\n", command);
+        if (system(command) != 0) return -1;
+    }
 
     return 0;
 }
@@ -200,21 +210,20 @@ int dxvk_add(prefix_t* prefix) {
 }
 
 int check_reg_entry(char* entry) {
-    char* dxvk_registry_entries[] = { "d3d8", "d3d9", "d3d10core", "d3d11", "dxgi" };
-    for (size_t i = 0; i < sizeof(dxvk_registry_entries) / sizeof(dxvk_registry_entries[0]); i++) {
+    for (size_t i = 0; i < DXVK_DLLS_COUNT; i++) {
         char pattern[30];
 
-        snprintf(pattern, sizeof(pattern), "\"%s\"=\"native\"", dxvk_registry_entries[i]);
+        snprintf(pattern, sizeof(pattern), "\"%s\"=\"native\"", DXVK_DLLS[i]);
         LOG(LOG_DEBUG, "Searching for pattern '%s' in user.reg\n", pattern);
         if (strstr(entry, pattern)) {
-            LOG(LOG_DEBUG, "Found dll overrride '%s'\n", dxvk_registry_entries[i]);
+            LOG(LOG_DEBUG, "Found dll overrride '%s'\n", DXVK_DLLS[i]);
             return 1;
         }
 
-        snprintf(pattern, sizeof(pattern), "\"%s\"=\"native,builtin\"", dxvk_registry_entries[i]);
+        snprintf(pattern, sizeof(pattern), "\"%s\"=\"native,builtin\"", DXVK_DLLS[i]);
         LOG(LOG_DEBUG, "Searching for pattern '%s' in user.reg\n", pattern);
         if (strstr(entry, pattern)) {
-            LOG(LOG_DEBUG, "Found dll overrride '%s'\n", dxvk_registry_entries[i]);
+            LOG(LOG_DEBUG, "Found dll overrride '%s'\n", DXVK_DLLS[i]);
             return 1;
         }
     }
