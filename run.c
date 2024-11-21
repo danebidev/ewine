@@ -15,8 +15,9 @@ int dxvk_remove_entries(prefix_t* prefix) {
     char reg_file_path[PATH_MAX];
     snprintf(reg_file_path, sizeof(reg_file_path), "%s/user.reg", prefix->path);
 
-    char tmp_file_path[PATH_MAX];
-    snprintf(tmp_file_path, sizeof(tmp_file_path) + 4, "%s.tmp", reg_file_path);
+    // Compiler complains without the + 4
+    char tmp_file_path[PATH_MAX + 4];
+    snprintf(tmp_file_path, sizeof(tmp_file_path), "%s.tmp", reg_file_path);
 
     FILE* reg_file = fopen(reg_file_path, "r");
     FILE* tmp_file = fopen(tmp_file_path, "w");
@@ -112,6 +113,89 @@ int dxvk_remove(prefix_t* prefix) {
         LOG(LOG_ERROR, "DXVK dlls couldn't be removed\n");
     }
 
+    int wineboot_pid = fork();
+    if (wineboot_pid == -1) {
+        LOG(LOG_ERROR, "failed to run wineboot\n");
+        return -1;
+    }
+
+    if (wineboot_pid == 0) {
+        char wineboot_path[PATH_MAX];
+        snprintf(wineboot_path, sizeof(wineboot_path), "%s/wineboot", prefix->wine->path);
+
+        setenv("WINEPREFIX", prefix->path, 1);
+        execl(wineboot_path, "wineboot", "-u", NULL);
+    }
+
+    return 0;
+}
+
+int dxvk_add_entries(prefix_t* prefix) {
+    char reg_path[PATH_MAX];
+    char tmp_reg_path[PATH_MAX];
+
+    snprintf(reg_path, sizeof(reg_path), "%s/user.reg", prefix->path);
+    snprintf(tmp_reg_path, sizeof(tmp_reg_path), "%s/user.reg.tmp", prefix->path);
+
+    FILE* reg = fopen(reg_path, "r");
+    FILE* reg_tmp = fopen(tmp_reg_path, "w");
+
+    char line[1024];
+    while (fgets(line, sizeof(line), reg)) {
+        fputs(line, reg_tmp);
+
+        if (strstr(line, "[Software\\\\Wine\\\\DllOverrides]") != NULL) {
+            fputs("\"d3d8\"=\"native,builtin\"\n", reg_tmp);
+            fputs("\"d3d9\"=\"native,builtin\"\n", reg_tmp);
+            fputs("\"d3d10core\"=\"native,builtin\"\n", reg_tmp);
+            fputs("\"d3d11\"=\"native,builtin\"\n", reg_tmp);
+            fputs("\"dxgi\"=\"native,builtin\"\n", reg_tmp);
+        }
+    }
+
+    fclose(reg);
+    fclose(reg_tmp);
+
+    rename(tmp_reg_path, reg_path);
+
+    return 0;
+}
+
+int dxvk_copy_dlls(prefix_t* prefix) {
+    char destination_path[PATH_MAX];
+    char dlls_path[PATH_MAX];
+    char command[PATH_MAX * 2 + 9];
+
+    snprintf(destination_path, sizeof(destination_path), "%s/drive_c/windows/system32", prefix->path);
+    snprintf(dlls_path, sizeof(dlls_path), "%s/x64", prefix->dxvk->path);
+
+    snprintf(command, sizeof(command), "cp \"%s\"/* \"%s\"", dlls_path, destination_path);
+
+    LOG(LOG_DEBUG, "Running command: %s\n", command);
+    if (system(command) != 0) return -1;
+
+    snprintf(destination_path, sizeof(destination_path), "%s/drive_c/windows/syswow64", prefix->path);
+    snprintf(dlls_path, sizeof(dlls_path), "%s/x32", prefix->dxvk->path);
+
+    snprintf(command, sizeof(command), "cp \"%s\"/* \"%s\"", dlls_path, destination_path);
+
+    LOG(LOG_DEBUG, "Running command: %s\n", command);
+    if (system(command) != 0) return -1;
+
+    return 0;
+}
+
+int dxvk_add(prefix_t* prefix) {
+    if (dxvk_add_entries(prefix) == -1) {
+        LOG(LOG_ERROR, "failed adding DXVK entries to prefix registry\n");
+        return -1;
+    }
+
+    if (dxvk_copy_dlls(prefix) == -1) {
+        LOG(LOG_ERROR, "failed copying DXVK dlls to prefix\n");
+        return -1;
+    }
+
     return 0;
 }
 
@@ -150,11 +234,7 @@ int is_dxvk_applied(prefix_t* prefix) {
     while (fgets(line, sizeof(line), reg_file)) {
         if (strstr(line, "[Software\\\\Wine\\\\DllOverrides]") != NULL) {
             while (fgets(line, sizeof(line), reg_file)) {
-                // Sections usually end with a blank line so we
-                // can use that to check for end of section
-                // Shouldn't break if the user manually removes the
-                // blank line, it's just gonna continue reading
-                if (line[0] == '\n' || line[0] == '\r') break;
+                if (line[0] == '[') goto end;
                 if (check_reg_entry(line)) {
                     dxvk_found = 1;
                     goto end;
@@ -171,9 +251,19 @@ end:
 
 int apply_dxvk(prefix_t* prefix) {
     if (is_dxvk_applied(prefix)) {
-        LOG(LOG_DEBUG, "Removing dxvk from prefix\n");
+        if (prefix->dxvk) return 0;
+        LOG(LOG_DEBUG, "Removing DXVK from prefix\n");
         if (dxvk_remove(prefix) == -1) {
             LOG(LOG_ERROR, "DXVK couldn't be removed\n");
+            return -1;
+        }
+    }
+    else {
+        if (!prefix->dxvk) return 0;
+        LOG(LOG_DEBUG, "Adding DXVK to prefix\n");
+        if (dxvk_add(prefix) == -1) {
+            LOG(LOG_ERROR, "DXVK couldn't be applied\n");
+            return -1;
         }
     }
 
@@ -203,9 +293,10 @@ int run(prefix_t* prefix) {
         LOG(LOG_ERROR, "prefix '%s' doesn't have a valid wine version\n", prefix->name);
         return -1;
     }
+
     int wine_pid = fork();
     if (wine_pid == -1) {
-        LOG(LOG_ERROR, "failed to fork to run wine\n");
+        LOG(LOG_ERROR, "failed to run wine\n");
         return -1;
     }
 
@@ -215,12 +306,11 @@ int run(prefix_t* prefix) {
 
         setenv("WINEPREFIX", prefix->path, 0);
 
-        char* args[] = { "wine64", prefix->binary, NULL };
-
         // For when i don't want wine to spam my output
         // Remember to change before commit
-        // execl("exit", "0", NULL);
-        execv(wine_path, args);
+        // execl("exit", "exit", "0", NULL);
+        exit(0);
+        // execl(wine_path, "wine64", prefix->binary, NULL);
     }
 
     return 0;
@@ -238,7 +328,10 @@ int command_run(char** argv, int argc, int args_index) {
 
     char* prefix_name = argv[args_index];
     prefix_t* prefix = get_prefix(prefix_name);
-    if (!prefix) LOG(LOG_ERROR, "no prefix named '%s'\n", prefix_name);
+    if (!prefix) {
+        LOG(LOG_ERROR, "no prefix named '%s'\n", prefix_name);
+        return -1;
+    }
 
     if (run(prefix) == -1) {
         LOG(LOG_ERROR, "can't run prefix '%s'\n", prefix_name);
