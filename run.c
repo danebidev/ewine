@@ -96,7 +96,12 @@ int dxvk_remove_files(prefix_t* prefix) {
     char full_path[PATH_MAX];
 
     for (int i = 0; i < 2; i++) {
-        const char* dirname = i == 0 ? "system32" : "syswow64";
+        if (i == 1 && prefix->arch == ARCH_WIN32) break;
+        char* dirname;
+        if (prefix->arch == ARCH_WIN64)
+            dirname = i == 0 ? "system32" : "syswow64";
+        else
+            dirname = "system32";
 
         for (size_t j = 0; j < DXVK_DLLS_COUNT; j++) {
             snprintf(full_path, sizeof(full_path), "%s/drive_c/windows/%s/%s.dll", prefix->path, dirname, DXVK_DLLS[j]);
@@ -154,6 +159,7 @@ int dxvk_add_entries(prefix_t* prefix) {
 
     FILE* reg_tmp = fopen(tmp_reg_path, "w");
     if (!reg_tmp) {
+        fclose(reg);
         LOG(LOG_ERROR, "Failed to open %s\n", tmp_reg_path);
         return -1;
     }
@@ -171,8 +177,8 @@ int dxvk_add_entries(prefix_t* prefix) {
         }
     }
 
-    fclose(reg);
-    fclose(reg_tmp);
+    if (reg) fclose(reg);
+    if (reg_tmp) fclose(reg_tmp);
 
     rename(tmp_reg_path, reg_path);
 
@@ -183,8 +189,13 @@ int dxvk_copy_dlls(prefix_t* prefix) {
     char command[PATH_MAX * 2 + 9];
 
     for (int i = 0; i < 2; i++) {
+        if (i == 1 && prefix->arch == ARCH_WIN32) break;
         char* windows_subdir = i == 0 ? "system32" : "syswow64";
-        char* dxvk_subdir = i == 0 ? "x32" : "x64";
+        char* dxvk_subdir;
+        if (prefix->arch == ARCH_WIN64)
+            dxvk_subdir = i == 0 ? "x64" : "x32";
+        else
+            dxvk_subdir = "x32";
 
         snprintf(command, sizeof(command), "cp \"%s/%s\"/* \"%s/drive_c/windows/%s\"", prefix->dxvk->path, dxvk_subdir, prefix->path, windows_subdir);
 
@@ -311,15 +322,16 @@ int run(prefix_t* prefix) {
 
     if (wine_pid == 0) {
         char wine_path[PATH_MAX];
-        snprintf(wine_path, sizeof(wine_path), "%s/wine64", prefix->wine->path);
+        char* execname = prefix->arch == ARCH_WIN64 ? "wine64" : "wine";
+        snprintf(wine_path, sizeof(wine_path), "%s/%s", prefix->wine->path, execname);
 
         setenv("WINEPREFIX", prefix->path, 0);
 
         // For when i don't want wine to spam my output
         // Remember to change before commit
         // execl("exit", "exit", "0", NULL);
-        exit(0);
-        // execl(wine_path, "wine64", prefix->binary, NULL);
+        // exit(0);
+        execl(wine_path, execname, prefix->binary, NULL);
     }
 
     return 0;
