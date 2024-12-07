@@ -68,3 +68,27 @@ int mkdirp(const char* path) {
     }
     return 0;
 }
+
+int read_string_input(char* message, char* default_value, char* buf, size_t buf_size) {
+    char ch, extra;
+    if (default_value != NULL)
+        printf("%s [%s]: ", message, default_value);
+    else
+        printf("%s: ", message);
+
+    fflush(stdout);
+
+    if (fgets(buf, buf_size, stdin) == NULL) {
+        return -1;
+    }
+
+    if (buf[strlen(buf) - 1] != '\n') {
+        extra = 0;
+        while (((ch = getchar()) != '\n') && (ch != EOF))
+            extra = 1;
+        return extra == 1 ? -1 : 0;
+    }
+    buf[strlen(buf) - 1] = '\0';
+
+    return 0;
+}

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #define LOG(LOG_LEVEL, __fmt, ...)                            \
     do {                                                      \
         if (LOG_LEVEL == LOG_DEBUG && !config.verbose) break; \
@@ -32,3 +33,5 @@ void remove_last_path_component(const char* path);
 char* read_file(const char* path);
 
 int mkdirp(const char* path);
+
+int read_string_input(char* message, char* default_value, char* buffer, size_t buffer_size);

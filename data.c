@@ -112,7 +112,7 @@ char* json_get_string(cJSON* obj, char* key) {
  * @param type The type of array to allocate (TYPE_PREFIX, TYPE_WINE, or TYPE_DXVK)
  * @param length The number of elements to allocate
  */
-void alloc_component_array(uint8_t type, size_t length) {
+int alloc_component_array(uint8_t type, size_t length) {
     void** target;
     size_t size = 0;
 
@@ -140,9 +140,10 @@ void alloc_component_array(uint8_t type, size_t length) {
     else
         new_ptr = reallocarray(*target, length, size);
 
-    if (!new_ptr) LOG(LOG_ERROR, "memory allocation failed for %s array\n", component_type_to_string(type));
+    if (!new_ptr) return -1;
 
     *target = new_ptr;
+    return 0;
 }
 
 /**
@@ -231,7 +232,10 @@ void parse_component_array(cJSON* json, install_type_t type) {
         LOG(LOG_ERROR, "invalid data file, %s is supposed to be an array\n", component_type_to_string(type));
 
     size_t count = cJSON_GetArraySize(json);
-    if (count) alloc_component_array(type, count);
+    if (count) {
+        if (alloc_component_array(type, count) != 0)
+            LOG(LOG_ERROR, "memory allocation failed for %s array\n", component_type_to_string(type));
+    }
 
     size_t cur_element = 0;
     cJSON* element = NULL;
@@ -241,7 +245,10 @@ void parse_component_array(cJSON* json, install_type_t type) {
             cur_element++;
     }
 
-    if (cur_element < count && cur_element) alloc_component_array(type, cur_element);
+    if (cur_element < count && cur_element) {
+        if (alloc_component_array(type, cur_element) != 0)
+            LOG(LOG_ERROR, "memory allocation failed for %s array\n", component_type_to_string(type));
+    }
 
     switch (type) {
         case TYPE_PREFIX:
@@ -300,6 +307,9 @@ void data_init() {
         parse_data();
     else
         create_data_file();
+}
+
+void save_data() {
 }
 
 int check_file_perms(char* dir_path, char* name, int perm) {
@@ -412,8 +422,8 @@ void data_free() {
         free(data.prefixes[i].name);
         free(data.prefixes[i].path);
         free(data.prefixes[i].binary);
-        free(data.prefixes[i].wine_name);
-        free(data.prefixes[i].dxvk_name);
+        if (data.prefixes[i].wine_name) free(data.prefixes[i].wine_name);
+        if (data.prefixes[i].dxvk_name) free(data.prefixes[i].dxvk_name);
     }
     free(data.prefixes);
 

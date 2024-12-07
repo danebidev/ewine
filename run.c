@@ -339,11 +339,11 @@ int run(prefix_t* prefix) {
 
 int command_run(char** argv, int argc, int args_index) {
     if (args_index == argc) {
-        printf("%s: Missing prefix name.\n", PROGRAM_NAME);
+        printf("%s: missing prefix name.\n", PROGRAM_NAME);
         return -1;
     }
     if (args_index + 1 != argc) {
-        printf("%s: Unexpected argument '%s'\n", PROGRAM_NAME, argv[args_index + 1]);
+        printf("%s: unexpected argument '%s'\n", PROGRAM_NAME, argv[args_index + 1]);
         return -1;
     }
 
@@ -351,12 +351,12 @@ int command_run(char** argv, int argc, int args_index) {
     prefix_t* prefix = get_prefix(prefix_name);
     if (!prefix) {
         LOG(LOG_ERROR, "no prefix named '%s'\n", prefix_name);
-        return -1;
+        return 1;
     }
 
     if (run(prefix) == -1) {
         LOG(LOG_ERROR, "can't run prefix '%s'\n", prefix_name);
-        return -1;
+        return 1;
     }
 
     return 0;

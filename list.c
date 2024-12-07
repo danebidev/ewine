@@ -61,7 +61,7 @@ int command_list(char *argv[], int argc, int args_index) {
             else if (strcmp(argv[args_index], "dxvk") == 0)
                 list_dxvk_installs();
             else {
-                printf("%s: Unrecognized component type '%s'. Should be one of 'prefix', 'wine' or 'dxvk'\n", PROGRAM_NAME, argv[args_index]);
+                printf("%s: unrecognized component type '%s'. Should be one of 'prefix', 'wine' or 'dxvk'\n", PROGRAM_NAME, argv[args_index]);
                 return -1;
             }
         }

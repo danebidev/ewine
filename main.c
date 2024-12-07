@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include "config.h"
+#include "create.h"
 #include "data.h"
 #include "list.h"
 #include "run.h"
@@ -21,13 +22,14 @@ void usage() {
     printf("    list [component]        Lists all components (prefix, wine, dxvk)\n");
     printf("                            Specify the component type to only list those\n");
     printf("    run <prefix>            Runs the specified prefix with the saved settings\n");
+    printf("    create                  Creates a new prefix and prompts for prefix settings\n");
 
-    printf("Options:\n");
+    printf("\nOptions:\n");
     printf("    -v                      Display verbose information\n");
     printf("    -h                      Display this help message\n");
 }
 
-void parse_argv(char* argv[], int argc, int cur_index) {
+void run_ewine(char* argv[], int argc, int cur_index) {
     int ret = 0;
     if (cur_index >= argc)
         usage();
@@ -35,6 +37,8 @@ void parse_argv(char* argv[], int argc, int cur_index) {
         ret = command_run(argv, argc, cur_index + 1);
     else if (strcmp(argv[cur_index], "list") == 0)
         ret = command_list(argv, argc, cur_index + 1);
+    else if (strcmp(argv[cur_index], "create") == 0)
+        ret = command_create(argv, argc, cur_index + 1);
     else
         usage();
 
@@ -63,7 +67,12 @@ int main(int argc, char* argv[]) {
     data_init();
     check_data();
 
-    parse_argv(argv, argc, optind);
+    run_ewine(argv, argc, optind);
+
+    for (int i = 0; i < data.prefix_count; i++) {
+        printf("%s\n", data.prefixes[i].name);
+        fflush(stdout);
+    }
 
     cleanup();
     return 0;
