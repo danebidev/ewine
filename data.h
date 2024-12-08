@@ -55,12 +55,13 @@ typedef struct {
 
 extern data_t data;
 
+arch_type_t str_to_arch(const char* arch_str);
 // Get an arch string from the arch_type_t (an int)
 char* arch_to_string(arch_type_t arch);
 
 int alloc_component_array(uint8_t type, size_t length);
 
 void data_init();
-void save_data();
+int save_data();
 void check_data();
 void data_free();

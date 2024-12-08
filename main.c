@@ -69,11 +69,6 @@ int main(int argc, char* argv[]) {
 
     run_ewine(argv, argc, optind);
 
-    for (int i = 0; i < data.prefix_count; i++) {
-        printf("%s\n", data.prefixes[i].name);
-        fflush(stdout);
-    }
-
     cleanup();
     return 0;
 }

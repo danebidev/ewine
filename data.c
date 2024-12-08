@@ -309,7 +309,80 @@ void data_init() {
         create_data_file();
 }
 
-void save_data() {
+int create_prefix_json(cJSON* prefixes) {
+    for (int i = 0; i < data.prefix_count; i++) {
+        cJSON* prefix = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(prefix, "name", data.prefixes[i].name);
+        cJSON_AddStringToObject(prefix, "path", data.prefixes[i].path);
+        cJSON_AddStringToObject(prefix, "binary", data.prefixes[i].binary);
+        cJSON_AddStringToObject(prefix, "wine", data.prefixes[i].wine->name);
+        cJSON_AddStringToObject(prefix, "dxvk", data.prefixes[i].dxvk->name);
+        cJSON_AddStringToObject(prefix, "arch", arch_to_string(data.prefixes[i].arch));
+
+        cJSON_AddItemToArray(prefixes, prefix);
+    }
+
+    return 0;
+}
+
+int create_wine_json(cJSON* wines) {
+    for (int i = 0; i < data.wine_count; i++) {
+        cJSON* wine = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(wine, "name", data.wine_installs[i].name);
+        cJSON_AddStringToObject(wine, "path", data.wine_installs[i].path);
+
+        cJSON_AddItemToArray(wines, wine);
+    }
+
+    return 0;
+}
+
+int create_dxvk_json(cJSON* dxvk_installs) {
+    for (int i = 0; i < data.dxvk_count; i++) {
+        cJSON* dxvk = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(dxvk, "name", data.dxvk_installs[i].name);
+        cJSON_AddStringToObject(dxvk, "path", data.dxvk_installs[i].path);
+
+        cJSON_AddItemToArray(dxvk_installs, dxvk);
+    }
+
+    return 0;
+}
+
+int save_data() {
+    cJSON* json = cJSON_CreateObject();
+    int err = -1;
+
+    cJSON* prefix = NULL;
+    cJSON* wine = NULL;
+    cJSON* dxvk = NULL;
+
+    if ((prefix = cJSON_AddArrayToObject(json, "prefix")) == NULL) goto end;
+    if ((wine = cJSON_AddArrayToObject(json, "wine")) == NULL) goto end;
+    if ((dxvk = cJSON_AddArrayToObject(json, "dxvk")) == NULL) goto end;
+
+    if (create_prefix_json(prefix) == -1) goto end;
+    if (create_wine_json(wine) == -1) goto end;
+    if (create_dxvk_json(dxvk) == -1) goto end;
+
+    char* c = cJSON_Print(json);
+
+    FILE* config_file = fopen(config.data_file, "w");
+    if (!config_file) {
+        return -1;
+    }
+
+    fwrite(c, sizeof(char), strlen(c), config_file);
+    free(c);
+    fclose(config_file);
+
+    err = 0;
+end:
+    cJSON_Delete(json);
+    return err;
 }
 
 int check_file_perms(char* dir_path, char* name, int perm) {
@@ -350,6 +423,13 @@ void check_prefix(prefix_t* prefix) {
 
     if (prefix->wine_name != NULL) {
         wine_t* wine = NULL;
+
+        if (strcmp(prefix->wine_name, "none") == 0) {
+            LOG(LOG_WARNING, "Prefix %s doesn't have a wine version set", prefix->name);
+            wine = NULL;
+            goto end_wine;
+        }
+
         for (int i = 0; i < data.wine_count; i++) {
             if (strcmp(data.wine_installs[i].name, prefix->wine_name) == 0) {
                 wine = &data.wine_installs[i];
@@ -369,11 +449,19 @@ void check_prefix(prefix_t* prefix) {
             }
         }
 
+    end_wine:
         prefix->wine = wine;
     }
 
     if (prefix->dxvk_name != NULL) {
         dxvk_t* dxvk = NULL;
+
+        if (strcmp(prefix->dxvk_name, "none") == 0) {
+            LOG(LOG_WARNING, "Prefix %s doesn't have a DXVK version set", prefix->name);
+            dxvk = NULL;
+            goto end_dxvk;
+        }
+
         for (int i = 0; i < data.dxvk_count; i++) {
             if (strcmp(data.dxvk_installs[i].name, prefix->dxvk_name) == 0) {
                 dxvk = &data.dxvk_installs[i];
@@ -393,6 +481,7 @@ void check_prefix(prefix_t* prefix) {
             }
         }
 
+    end_dxvk:
         prefix->dxvk = dxvk;
     }
 

@@ -33,6 +33,7 @@ int create() {
     char* prefix_name = malloc(sizeof(char) * 64);
     char* prefix_path = malloc(sizeof(char) * PATH_MAX);
     char* binary_path = malloc(sizeof(char) * PATH_MAX);
+    char* arch = malloc(sizeof(char) * 16);
     wine_t* wine = NULL;
     dxvk_t* dxvk = NULL;
 
@@ -45,6 +46,10 @@ int create() {
 
     while (read_string_input("Prefix path", default_value, prefix_path, sizeof(prefix_path)) == -1) {
         printf("Invalid string. Retry.\n");
+    }
+
+    if (prefix_path[0] == '\0') {
+        strcpy(prefix_path, default_value);
     }
 
     while (read_string_input("Binary path", NULL, binary_path, sizeof(binary_path)) == -1 || binary_path[0] == '\0') {
@@ -79,10 +84,19 @@ int create() {
         }
     }
 
+    while (read_string_input("Arch", "win64", arch, sizeof(arch)) == -1) {
+        printf("Invalid string. Retry.\n");
+    }
+    if (arch[0] == '\0') {
+        free(arch);
+        arch = "win64";
+    }
+
     prefix_t prefix;
     prefix.name = prefix_name;
     prefix.path = prefix_path;
     prefix.binary = binary_path;
+    prefix.arch = str_to_arch(arch);
     prefix.wine = wine;
     prefix.dxvk = dxvk;
     prefix.wine_name = NULL;
