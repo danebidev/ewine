@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "build_config.h"
@@ -133,8 +134,13 @@ int create() {
 
     printf("Creating prefix - please wait");
 
+    if (mkdir(prefix_path, 0755) != 0) {
+        LOG(LOG_ERROR, "failed creating prefix directory\n");
+        return -1;
+    }
+
     if (!wine) {
-        printf("Not creating the prefix because no wine was set.");
+        printf("Not creating the prefix because no wine was set.\n");
     }
     else if (create_prefix(prefix_path, wine) == -1) {
         LOG(LOG_ERROR, "failed creating the prefix\n");
