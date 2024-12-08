@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "build_config.h"
 #include "config.h"
@@ -25,6 +26,25 @@ dxvk_t* get_dxvk(char* dxvk_name) {
     }
 
     return NULL;
+}
+
+int create_prefix(char* prefix_path, wine_t* wine) {
+    int pid = fork();
+
+    if (pid == -1) {
+        LOG(LOG_ERROR, "fork() failed\n");
+        return -1;
+    }
+
+    if (pid == 0) {
+        char wineboot_path[PATH_MAX];
+        snprintf(wineboot_path, sizeof(wineboot_path), "%s/wineboot", wine->path);
+
+        setenv("WINEPREFIX", prefix_path, 1);
+        execl(wineboot_path, "wineboot", "-i", NULL);
+    }
+
+    return 0;
 }
 
 int create() {
@@ -110,6 +130,16 @@ int create() {
     }
 
     data.prefixes[data.prefix_count - 1] = prefix;
+
+    printf("Creating prefix - please wait");
+
+    if (!wine) {
+        printf("Not creating the prefix because no wine was set.");
+    }
+    else if (create_prefix(prefix_path, wine) == -1) {
+        LOG(LOG_ERROR, "failed creating the prefix\n");
+        return -1;
+    }
 
     printf("Prefix created.\n");
 
