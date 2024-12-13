@@ -129,21 +129,12 @@ void read_dxvk(dxvk_t** dxvk) {
 }
 
 int create() {
-    // malloc because data_free() assumes all
-    // the data is malloced and frees it
-    char* prefix_name = malloc(sizeof(char) * 64);
-    char* prefix_path = malloc(sizeof(char) * PATH_MAX);
-    char* binary_path = malloc(sizeof(char) * PATH_MAX);
-    char* arch = malloc(sizeof(char) * 16);
+    char prefix_name[64];
+    char prefix_path[PATH_MAX];
+    char binary_path[PATH_MAX];
+    char arch[10];
     wine_t* wine = NULL;
     dxvk_t* dxvk = NULL;
-
-    int result = -1;
-
-    if (!prefix_name || !prefix_path || !binary_path || !arch) {
-        LOG(LOG_ERROR, "memory allocation failed\n");
-        goto cleanup;
-    }
 
     while (read_string_input("Prefix name", NULL, prefix_name, sizeof(prefix_name)) == -1 || prefix_name[0] == '\0') {
         printf("Invalid or empty string. Retry.\n");
@@ -172,14 +163,13 @@ int create() {
     }
 
     if (arch[0] == '\0') {
-        free(arch);
-        arch = "win64";
+        strcpy(arch, "win64");
     }
 
     prefix_t prefix = {
-        .name = prefix_name,
-        .path = prefix_path,
-        .binary = binary_path,
+        .name = strdup(prefix_name),
+        .path = strdup(prefix_path),
+        .binary = strdup(binary_path),
         .arch = str_to_arch(arch),
         .wine = wine,
         .dxvk = dxvk,
@@ -196,7 +186,7 @@ int create() {
 
     data.prefixes[data.prefix_count - 1] = prefix;
 
-    printf("Creating prefix - please wait");
+    printf("Creating prefix...\n");
 
     if (mkdirp(prefix_path) != 0) {
         LOG(LOG_ERROR, "failed creating prefix directory\n");
@@ -212,13 +202,6 @@ int create() {
     }
 
     printf("Prefix created.\n");
-
-cleanup:
-    if (result) {
-        free(prefix_name);
-        free(prefix_path);
-        free(binary_path);
-    }
 
     return 0;
 }
@@ -237,6 +220,6 @@ int command_create(char* argv[], int argc, int args_index) {
         return 1;
     }
 
-    save_data();
+    /*save_data();*/
     return 0;
 }

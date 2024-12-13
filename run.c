@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "build_config.h"
@@ -333,6 +334,10 @@ int run(prefix_t* prefix) {
         // exit(0);
         execl(wine_path, execname, prefix->binary, NULL);
     }
+
+    wait(NULL);
+
+    system("wineserver -k");
 
     return 0;
 }

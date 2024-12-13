@@ -416,10 +416,10 @@ void check_dxvk(dxvk_t* dxvk) {
 
 void check_prefix(prefix_t* prefix) {
     if (access(prefix->path, R_OK) == -1)
-        LOG(LOG_WARNING, "can't write to %s for prefix '%s'\n", prefix->path, prefix->name);
+        LOG(LOG_WARNING, "Can't write to %s for prefix '%s'\n", prefix->path, prefix->name);
 
     if (access(prefix->binary, R_OK) == -1)
-        LOG(LOG_WARNING, "can't read %s for prefix '%s'\n", prefix->binary, prefix->name);
+        LOG(LOG_WARNING, "Can't read %s for prefix '%s'\n", prefix->binary, prefix->name);
 
     if (prefix->wine_name != NULL) {
         wine_t* wine = NULL;
