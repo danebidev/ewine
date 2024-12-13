@@ -1,11 +1,13 @@
 #include "create.h"
 
+#include <errno.h>
 #include <linux/limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "build_config.h"
@@ -14,6 +16,8 @@
 #include "util.h"
 
 wine_t* get_wine(char* wine_name) {
+    if (!wine_name) return NULL;
+
     for (int i = 0; i < data.wine_count; i++) {
         if (strcmp(data.wine_installs[i].name, wine_name) == 0) return &data.wine_installs[i];
     }
@@ -22,6 +26,8 @@ wine_t* get_wine(char* wine_name) {
 }
 
 dxvk_t* get_dxvk(char* dxvk_name) {
+    if (!dxvk_name) return NULL;
+
     for (int i = 0; i < data.dxvk_count; i++) {
         if (strcmp(data.dxvk_installs[i].name, dxvk_name) == 0) return &data.dxvk_installs[i];
     }
@@ -33,7 +39,7 @@ int create_prefix(char* prefix_path, wine_t* wine) {
     int pid = fork();
 
     if (pid == -1) {
-        LOG(LOG_ERROR, "fork() failed\n");
+        LOG(LOG_ERROR, "fork() failed: %s\n", strerror(errno));
         return -1;
     }
 
@@ -43,9 +49,83 @@ int create_prefix(char* prefix_path, wine_t* wine) {
 
         setenv("WINEPREFIX", prefix_path, 1);
         execl(wineboot_path, "wineboot", "-i", NULL);
+
+        LOG(LOG_ERROR, "execl failed: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
     }
 
+    wait(NULL);
+
     return 0;
+}
+
+void read_wine(wine_t** wine) {
+    char wine_name[64];
+
+    if (data.wine_count == 0) {
+        LOG(LOG_WARNING, "No Wine installs found - skipping\n");
+        *wine = NULL;
+        return;
+    }
+
+    if (data.wine_count == 1) {
+        printf("Only one version of Wine is availabe - setting Wine for this prefix to '%s'\n", data.wine_installs[0].name);
+        *wine = &data.wine_installs[0];
+        return;
+    }
+
+    while (1) {
+        while (read_string_input("Wine", NULL, wine_name, sizeof(wine_name)) == -1) {
+            printf("Invalid string. Retry.\n");
+        }
+
+        *wine = get_wine(wine_name);
+        if (*wine) break;
+
+        printf("Invalid Wine version. Available versions:\n");
+        for (int i = 0; i < data.wine_count; i++) {
+            printf("- %s\n", data.wine_installs[i].name);
+        }
+    }
+
+    return;
+}
+
+void read_dxvk(dxvk_t** dxvk) {
+    char dxvk_name[64];
+
+    if (data.dxvk_count == 0) {
+        LOG(LOG_WARNING, "No DXVK installs found - skipping\n");
+        *dxvk = NULL;
+        return;
+    }
+
+    if (data.dxvk_count == 1) {
+        printf("Only one version of DXVK is availabe - setting DXVK for this prefix to '%s'\n", data.dxvk_installs[0].name);
+        *dxvk = &data.dxvk_installs[0];
+        return;
+    }
+
+    while (1) {
+        while (read_string_input("DXVK (empty for none)", NULL, dxvk_name, sizeof(dxvk_name)) == -1) {
+            printf("Invalid string. Retry.\n");
+        }
+
+        if (dxvk_name[0] == 0) {
+            *dxvk = NULL;
+            break;
+        }
+
+        *dxvk = get_dxvk(dxvk_name);
+        if (*dxvk) break;
+
+        printf("Invalid DXVK version. Available versions:\n");
+        for (int i = 0; i < data.dxvk_count; i++) {
+            printf("- %s\n", data.dxvk_installs[i].name);
+        }
+    }
+
+    return;
 }
 
 int create() {
@@ -57,6 +137,13 @@ int create() {
     char* arch = malloc(sizeof(char) * 16);
     wine_t* wine = NULL;
     dxvk_t* dxvk = NULL;
+
+    int result = -1;
+
+    if (!prefix_name || !prefix_path || !binary_path || !arch) {
+        LOG(LOG_ERROR, "memory allocation failed\n");
+        goto cleanup;
+    }
 
     while (read_string_input("Prefix name", NULL, prefix_name, sizeof(prefix_name)) == -1 || prefix_name[0] == '\0') {
         printf("Invalid or empty string. Retry.\n");
@@ -77,51 +164,28 @@ int create() {
         printf("Invalid or empty string. Retry.\n");
     }
 
-    if (data.wine_count == 0) {
-        LOG(LOG_WARNING, "No Wine installs found - skipping\n");
-    }
-    else if (data.wine_count == 1) {
-        printf("Only one version of Wine is availabe - setting Wine for this prefix to '%s'\n", data.wine_installs[0].name);
-        wine = &data.wine_installs[0];
-    }
-    else {
-        char wine_name[64];
-        while (read_string_input("Wine", NULL, wine_name, sizeof(wine_name)) == -1 && (wine = get_wine(wine_name))) {
-            printf("Invalid or empty string. Retry.\n");
-        }
-    }
-
-    if (data.dxvk_count == 0) {
-        LOG(LOG_WARNING, "No DXVK installs found - skipping\n");
-    }
-    else if (data.dxvk_count == 1) {
-        printf("Only one version of DXVK is availabe - setting DXVK for this prefix to '%s'\n", data.dxvk_installs[0].name);
-        dxvk = &data.dxvk_installs[0];
-    }
-    else {
-        char dxvk_name[64];
-        while (read_string_input("DXVK", NULL, dxvk_name, sizeof(dxvk_name)) == -1 && (dxvk = get_dxvk(dxvk_name))) {
-            printf("Invalid or empty string. Retry.\n");
-        }
-    }
+    read_wine(&wine);
+    read_dxvk(&dxvk);
 
     while (read_string_input("Arch", "win64", arch, sizeof(arch)) == -1) {
         printf("Invalid string. Retry.\n");
     }
+
     if (arch[0] == '\0') {
         free(arch);
         arch = "win64";
     }
 
-    prefix_t prefix;
-    prefix.name = prefix_name;
-    prefix.path = prefix_path;
-    prefix.binary = binary_path;
-    prefix.arch = str_to_arch(arch);
-    prefix.wine = wine;
-    prefix.dxvk = dxvk;
-    prefix.wine_name = NULL;
-    prefix.dxvk_name = NULL;
+    prefix_t prefix = {
+        .name = prefix_name,
+        .path = prefix_path,
+        .binary = binary_path,
+        .arch = str_to_arch(arch),
+        .wine = wine,
+        .dxvk = dxvk,
+        .wine_name = NULL,
+        .dxvk_name = NULL
+    };
 
     data.prefix_count++;
 
@@ -134,7 +198,7 @@ int create() {
 
     printf("Creating prefix - please wait");
 
-    if (mkdir(prefix_path, 0755) != 0) {
+    if (mkdirp(prefix_path) != 0) {
         LOG(LOG_ERROR, "failed creating prefix directory\n");
         return -1;
     }
@@ -148,6 +212,13 @@ int create() {
     }
 
     printf("Prefix created.\n");
+
+cleanup:
+    if (result) {
+        free(prefix_name);
+        free(prefix_path);
+        free(binary_path);
+    }
 
     return 0;
 }
