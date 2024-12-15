@@ -232,18 +232,70 @@ int read_and_create_prefix() {
     return create_prefix(prefix_name, prefix_path, binary_path, arch, wine, dxvk);
 }
 
+int create_wine() {
+    char wine_name[64];
+    char wine_path[PATH_MAX];
+
+    while (read_string_input("Wine name", NULL, wine_name, sizeof(wine_name)) == -1 || wine_name[0] == '\0') {
+        printf("Invalid or empty string. Retry.\n");
+    }
+
+    char default_value[PATH_MAX + 71];  // So the compiler doesn't scream at me
+    snprintf(default_value, sizeof(default_value), "%s/wine/%s", config.data_dir, wine_name);
+
+    while (read_string_input("Wine path", NULL, wine_path, sizeof(wine_path)) == -1 || wine_path[0] == '\0') {
+        printf("Invalid or empty string. Retry.\n");
+    }
+
+    wordexp_t p;
+    wordexp(wine_path, &p, 0);
+    strcpy(wine_path, *p.we_wordv);
+
+    if (wine_path[0] != '/') {
+        LOG(LOG_ERROR, "the wine path has to be absolute\n");
+        wordfree(&p);
+        return -1;
+    }
+
+    wine_t wine = {
+        .name = strdup(wine_name),
+        .path = strdup(wine_path),
+    };
+
+    data.wine_count++;
+
+    if (alloc_component_array(TYPE_WINE, data.wine_count) != 0) {
+        LOG(LOG_ERROR, "memory allocation failed for wine array\n");
+        return -1;
+    }
+
+    data.wine_installs[data.wine_count - 1] = wine;
+
+    printf("Prefix created.\n");
+
+    return 0;
+}
+
 /**
  * @return 0 if the command completed succesfully, -1 otherwise
  */
 int command_create(char* argv[], int argc, int args_index) {
-    if (args_index < argc) {
+    if (args_index + 1 < argc) {
         printf("%s: unexpected argument '%s'\n", PROGRAM_NAME, argv[args_index]);
         return -1;
     }
 
-    if (read_and_create_prefix() == -1) {
-        LOG(LOG_ERROR, "can't create prefix\n");
-        return 1;
+    if (strcmp(argv[args_index], "prefix") == 0) {
+        if (read_and_create_prefix() == -1) {
+            LOG(LOG_ERROR, "can't create prefix\n");
+            return 1;
+        }
+    }
+    else if (strcmp(argv[args_index], "wine") == 0) {
+        if (create_wine() == -1) {
+            LOG(LOG_ERROR, "can't create wine\n");
+            return 1;
+        }
     }
 
     save_data();
