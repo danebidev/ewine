@@ -240,11 +240,15 @@ int create_wine() {
         printf("Invalid or empty string. Retry.\n");
     }
 
-    char default_value[PATH_MAX + 71];  // So the compiler doesn't scream at me
-    snprintf(default_value, sizeof(default_value), "%s/wine/%s", config.data_dir, wine_name);
+    char default_path[PATH_MAX + 71];  // So the compiler doesn't scream at me
+    snprintf(default_path, sizeof(default_path), "%s/wine/%s", config.data_dir, wine_name);
 
-    while (read_string_input("Wine path", NULL, wine_path, sizeof(wine_path)) == -1 || wine_path[0] == '\0') {
+    while (read_string_input("Wine path", default_path, wine_path, sizeof(wine_path)) == -1) {
         printf("Invalid or empty string. Retry.\n");
+    }
+
+    if (wine_path[0] == '\0') {
+        strcpy(wine_path, default_path);
     }
 
     wordexp_t p;
@@ -285,11 +289,15 @@ int create_dxvk() {
         printf("Invalid or empty string. Retry.\n");
     }
 
-    char default_value[PATH_MAX + 71];  // So the compiler doesn't scream at me
-    snprintf(default_value, sizeof(default_value), "%s/dxvk/%s", config.data_dir, dxvk_name);
+    char default_path[PATH_MAX + 71];  // So the compiler doesn't scream at me
+    snprintf(default_path, sizeof(default_path), "%s/dxvk/%s", config.data_dir, dxvk_name);
 
-    while (read_string_input("DXVK path", NULL, dxvk_path, sizeof(dxvk_path)) == -1 || dxvk_path[0] == '\0') {
+    while (read_string_input("DXVK path", default_path, dxvk_path, sizeof(dxvk_path)) == -1) {
         printf("Invalid or empty string. Retry.\n");
+    }
+
+    if (dxvk_path[0] == '\0') {
+        strcpy(dxvk_path, default_path);
     }
 
     wordexp_t p;
@@ -328,6 +336,10 @@ int create_dxvk() {
 int command_create(char* argv[], int argc, int args_index) {
     if (args_index + 1 < argc) {
         printf("%s: unexpected argument '%s'\n", PROGRAM_NAME, argv[args_index]);
+        return -1;
+    }
+    else if (args_index >= argc) {
+        printf("%s: missing component type. Should be one of 'prefix', 'wine' or 'dxvk'\n", PROGRAM_NAME);
         return -1;
     }
 
