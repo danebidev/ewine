@@ -182,6 +182,13 @@ int read_and_create_prefix() {
         printf("Invalid or empty string. Retry.\n");
     }
 
+    for (int i = 0; i < data.prefix_count; i++) {
+        if (strcmp(data.prefixes[i].name, prefix_name) == 0) {
+            LOG(LOG_ERROR, "a prefix named '%s' already exists\n", prefix_name);
+            return -1;
+        }
+    }
+
     char default_value[PATH_MAX + 71];  // So the compiler doesn't scream at me
     snprintf(default_value, sizeof(default_value), "%s/prefix/%s", config.data_dir, prefix_name);
 
@@ -240,6 +247,13 @@ int create_wine() {
         printf("Invalid or empty string. Retry.\n");
     }
 
+    for (int i = 0; i < data.wine_count; i++) {
+        if (strcmp(data.wine_installs[i].name, wine_name) == 0) {
+            LOG(LOG_ERROR, "a wine named '%s' already exists\n", wine_name);
+            return -1;
+        }
+    }
+
     char default_path[PATH_MAX + 71];  // So the compiler doesn't scream at me
     snprintf(default_path, sizeof(default_path), "%s/wine/%s", config.data_dir, wine_name);
 
@@ -287,6 +301,13 @@ int create_dxvk() {
 
     while (read_string_input("DXVK name", NULL, dxvk_name, sizeof(dxvk_name)) == -1 || dxvk_name[0] == '\0') {
         printf("Invalid or empty string. Retry.\n");
+    }
+
+    for (int i = 0; i < data.dxvk_count; i++) {
+        if (strcmp(data.dxvk_installs[i].name, dxvk_name) == 0) {
+            LOG(LOG_ERROR, "a dxvk named '%s' already exists\n", dxvk_name);
+            return -1;
+        }
     }
 
     char default_path[PATH_MAX + 71];  // So the compiler doesn't scream at me
