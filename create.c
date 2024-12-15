@@ -158,7 +158,7 @@ int create_prefix(char* prefix_name, char* prefix_path, char* binary_path, char*
     }
 
     if (!wine) {
-        printf("Not creating the prefix because no wine was set.\n");
+        printf("Not initializing the prefix because no wine was set.\n");
     }
     else if (wineboot_prefix(prefix_path, wine) == -1) {
         LOG(LOG_ERROR, "failed creating the prefix\n");
@@ -251,9 +251,10 @@ int create_wine() {
     wordexp(wine_path, &p, 0);
     strcpy(wine_path, *p.we_wordv);
 
+    wordfree(&p);
+
     if (wine_path[0] != '/') {
         LOG(LOG_ERROR, "the wine path has to be absolute\n");
-        wordfree(&p);
         return -1;
     }
 
@@ -272,6 +273,51 @@ int create_wine() {
     data.wine_installs[data.wine_count - 1] = wine;
 
     printf("Prefix created.\n");
+
+    return 0;
+}
+
+int create_dxvk() {
+    char dxvk_name[64];
+    char dxvk_path[PATH_MAX];
+
+    while (read_string_input("DXVK name", NULL, dxvk_name, sizeof(dxvk_name)) == -1 || dxvk_name[0] == '\0') {
+        printf("Invalid or empty string. Retry.\n");
+    }
+
+    char default_value[PATH_MAX + 71];  // So the compiler doesn't scream at me
+    snprintf(default_value, sizeof(default_value), "%s/dxvk/%s", config.data_dir, dxvk_name);
+
+    while (read_string_input("DXVK path", NULL, dxvk_path, sizeof(dxvk_path)) == -1 || dxvk_path[0] == '\0') {
+        printf("Invalid or empty string. Retry.\n");
+    }
+
+    wordexp_t p;
+    wordexp(dxvk_path, &p, 0);
+    strcpy(dxvk_path, *p.we_wordv);
+
+    wordfree(&p);
+
+    if (dxvk_path[0] != '/') {
+        LOG(LOG_ERROR, "the DXVK path has to be absolute\n");
+        return -1;
+    }
+
+    dxvk_t dxvk = {
+        .name = strdup(dxvk_name),
+        .path = strdup(dxvk_path),
+    };
+
+    data.dxvk_count++;
+
+    if (alloc_component_array(TYPE_DXVK, data.dxvk_count) != 0) {
+        LOG(LOG_ERROR, "memory allocation failed for DXVK array\n");
+        return -1;
+    }
+
+    data.dxvk_installs[data.dxvk_count - 1] = dxvk;
+
+    printf("DXVK created.\n");
 
     return 0;
 }
@@ -296,6 +342,16 @@ int command_create(char* argv[], int argc, int args_index) {
             LOG(LOG_ERROR, "can't create wine\n");
             return 1;
         }
+    }
+    else if (strcmp(argv[args_index], "dxvk") == 0) {
+        if (create_dxvk() == -1) {
+            LOG(LOG_ERROR, "can't create dxvk\n");
+            return 1;
+        }
+    }
+    else {
+        printf("%s: unrecognized component type '%s'. Should be one of 'prefix', 'wine' or 'dxvk'\n", PROGRAM_NAME, argv[args_index]);
+        return -1;
     }
 
     save_data();
