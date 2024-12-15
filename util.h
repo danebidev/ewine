@@ -6,6 +6,7 @@
         if (LOG_LEVEL == LOG_DEBUG && !config.verbose) break; \
         switch (LOG_LEVEL) {                                  \
             case LOG_ERROR:                                   \
+                printf("\e[1m");                              \
                 printf("\e[38;5;1m");                         \
                 printf("error: " __fmt, ##__VA_ARGS__);       \
                 break;                                        \

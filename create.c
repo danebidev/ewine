@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <wordexp.h>
 
 #include "build_config.h"
 #include "config.h"
@@ -35,7 +36,7 @@ dxvk_t* get_dxvk(char* dxvk_name) {
     return NULL;
 }
 
-int create_prefix(char* prefix_path, wine_t* wine) {
+int wineboot_prefix(char* prefix_path, wine_t* wine) {
     int pid = fork();
 
     if (pid == -1) {
@@ -128,44 +129,7 @@ void read_dxvk(dxvk_t** dxvk) {
     return;
 }
 
-int create() {
-    char prefix_name[64];
-    char prefix_path[PATH_MAX];
-    char binary_path[PATH_MAX];
-    char arch[10];
-    wine_t* wine = NULL;
-    dxvk_t* dxvk = NULL;
-
-    while (read_string_input("Prefix name", NULL, prefix_name, sizeof(prefix_name)) == -1 || prefix_name[0] == '\0') {
-        printf("Invalid or empty string. Retry.\n");
-    }
-
-    char default_value[PATH_MAX];
-    snprintf(default_value, sizeof(default_value), "%s/prefix/%s", config.data_dir, prefix_name);
-
-    while (read_string_input("Prefix path", default_value, prefix_path, sizeof(prefix_path)) == -1) {
-        printf("Invalid string. Retry.\n");
-    }
-
-    if (prefix_path[0] == '\0') {
-        strcpy(prefix_path, default_value);
-    }
-
-    while (read_string_input("Binary path", NULL, binary_path, sizeof(binary_path)) == -1 || binary_path[0] == '\0') {
-        printf("Invalid or empty string. Retry.\n");
-    }
-
-    read_wine(&wine);
-    read_dxvk(&dxvk);
-
-    while (read_string_input("Arch", "win64", arch, sizeof(arch)) == -1) {
-        printf("Invalid string. Retry.\n");
-    }
-
-    if (arch[0] == '\0') {
-        strcpy(arch, "win64");
-    }
-
+int create_prefix(char* prefix_name, char* prefix_path, char* binary_path, char* arch, wine_t* wine, dxvk_t* dxvk) {
     prefix_t prefix = {
         .name = strdup(prefix_name),
         .path = strdup(prefix_path),
@@ -196,7 +160,7 @@ int create() {
     if (!wine) {
         printf("Not creating the prefix because no wine was set.\n");
     }
-    else if (create_prefix(prefix_path, wine) == -1) {
+    else if (wineboot_prefix(prefix_path, wine) == -1) {
         LOG(LOG_ERROR, "failed creating the prefix\n");
         return -1;
     }
@@ -204,6 +168,68 @@ int create() {
     printf("Prefix created.\n");
 
     return 0;
+}
+
+int read_and_create_prefix() {
+    char prefix_name[64];
+    char prefix_path[PATH_MAX];
+    char binary_path[PATH_MAX];
+    char arch[10];
+    wine_t* wine = NULL;
+    dxvk_t* dxvk = NULL;
+
+    while (read_string_input("Prefix name", NULL, prefix_name, sizeof(prefix_name)) == -1 || prefix_name[0] == '\0') {
+        printf("Invalid or empty string. Retry.\n");
+    }
+
+    char default_value[PATH_MAX + 71];  // So the compiler doesn't scream at me
+    snprintf(default_value, sizeof(default_value), "%s/prefix/%s", config.data_dir, prefix_name);
+
+    while (read_string_input("Prefix path", default_value, prefix_path, sizeof(prefix_path)) == -1) {
+        printf("Invalid string. Retry.\n");
+    }
+
+    if (prefix_path[0] == '\0') {
+        strcpy(prefix_path, default_value);
+    }
+
+    while (read_string_input("Binary path", NULL, binary_path, sizeof(binary_path)) == -1 || binary_path[0] == '\0') {
+        printf("Invalid or empty string. Retry.\n");
+    }
+
+    read_wine(&wine);
+    read_dxvk(&dxvk);
+
+    while (read_string_input("Arch", "win64", arch, sizeof(arch)) == -1) {
+        printf("Invalid string. Retry.\n");
+    }
+
+    if (arch[0] == '\0') {
+        strcpy(arch, "win64");
+    }
+
+    wordexp_t p;
+    wordexp(prefix_path, &p, 0);
+    strcpy(prefix_path, *p.we_wordv);
+
+    if (prefix_path[0] != '/') {
+        LOG(LOG_ERROR, "the prefix path has to be absolute\n");
+        wordfree(&p);
+        return -1;
+    }
+
+    wordexp(binary_path, &p, WRDE_REUSE);
+    strcpy(binary_path, *p.we_wordv);
+
+    if (binary_path[0] != '/') {
+        LOG(LOG_ERROR, "the binary path has to be absolute\n");
+        wordfree(&p);
+        return -1;
+    }
+
+    wordfree(&p);
+
+    return create_prefix(prefix_name, prefix_path, binary_path, arch, wine, dxvk);
 }
 
 /**
@@ -215,11 +241,11 @@ int command_create(char* argv[], int argc, int args_index) {
         return -1;
     }
 
-    if (create() == -1) {
+    if (read_and_create_prefix() == -1) {
         LOG(LOG_ERROR, "can't create prefix\n");
         return 1;
     }
 
-    /*save_data();*/
+    save_data();
     return 0;
 }
