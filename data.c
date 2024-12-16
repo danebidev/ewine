@@ -316,8 +316,17 @@ int create_prefix_json(cJSON* prefixes) {
         cJSON_AddStringToObject(prefix, "name", data.prefixes[i].name);
         cJSON_AddStringToObject(prefix, "path", data.prefixes[i].path);
         cJSON_AddStringToObject(prefix, "binary", data.prefixes[i].binary);
-        cJSON_AddStringToObject(prefix, "wine", data.prefixes[i].wine->name);
-        cJSON_AddStringToObject(prefix, "dxvk", data.prefixes[i].dxvk->name);
+
+        if (data.prefixes[i].wine)
+            cJSON_AddStringToObject(prefix, "wine", data.prefixes[i].wine->name);
+        else
+            cJSON_AddStringToObject(prefix, "wine", "none");
+
+        if (data.prefixes[i].dxvk)
+            cJSON_AddStringToObject(prefix, "dxvk", data.prefixes[i].dxvk->name);
+        else
+            cJSON_AddStringToObject(prefix, "dxvk", "none");
+
         cJSON_AddStringToObject(prefix, "arch", arch_to_string(data.prefixes[i].arch));
 
         cJSON_AddItemToArray(prefixes, prefix);
