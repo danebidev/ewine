@@ -64,4 +64,8 @@ int alloc_component_array(uint8_t type, size_t length);
 void data_init();
 int save_data();
 void check_data();
+
+void free_prefix(int index);
+void free_wine(int index);
+void free_dxvk(int index);
 void data_free();

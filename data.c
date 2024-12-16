@@ -546,28 +546,43 @@ void check_data() {
     }
 }
 
+void free_prefix(int index) {
+    free(data.prefixes[index].name);
+    free(data.prefixes[index].path);
+    free(data.prefixes[index].binary);
+
+    // Might not be set on just created prefixes
+    // since we directly get the wine_t
+    if (data.prefixes[index].wine_name) free(data.prefixes[index].wine_name);
+    if (data.prefixes[index].dxvk_name) free(data.prefixes[index].dxvk_name);
+}
+
+void free_wine(int index) {
+    free(data.wine_installs[index].name);
+    free(data.wine_installs[index].path);
+}
+
+void free_dxvk(int index) {
+    free(data.dxvk_installs[index].name);
+    free(data.dxvk_installs[index].path);
+}
+
 /**
  * Frees all allocated memory used by the data subsystem.
  */
 void data_free() {
     for (int i = 0; i < data.prefix_count; i++) {
-        free(data.prefixes[i].name);
-        free(data.prefixes[i].path);
-        free(data.prefixes[i].binary);
-        if (data.prefixes[i].wine_name) free(data.prefixes[i].wine_name);
-        if (data.prefixes[i].dxvk_name) free(data.prefixes[i].dxvk_name);
+        free_prefix(i);
     }
     free(data.prefixes);
 
     for (int i = 0; i < data.wine_count; i++) {
-        free(data.wine_installs[i].name);
-        free(data.wine_installs[i].path);
+        free_wine(i);
     }
     free(data.wine_installs);
 
     for (int i = 0; i < data.dxvk_count; i++) {
-        free(data.dxvk_installs[i].name);
-        free(data.dxvk_installs[i].path);
+        free_dxvk(i);
     }
     free(data.dxvk_installs);
 }
