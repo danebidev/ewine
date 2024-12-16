@@ -136,8 +136,8 @@ int create_prefix(char* prefix_name, char* prefix_path, char* binary_path, char*
         .arch = str_to_arch(arch),
         .wine = wine,
         .dxvk = dxvk,
-        .wine_name = NULL,
-        .dxvk_name = NULL
+        .wine_name = strdup(wine->name),
+        .dxvk_name = strdup(dxvk->name)
     };
 
     data.prefix_count++;
@@ -289,7 +289,7 @@ int create_wine() {
 
     data.wine_installs[data.wine_count - 1] = wine;
 
-    printf("Prefix created.\n");
+    printf("Wine created.\n");
 
     return 0;
 }
@@ -343,6 +343,7 @@ int create_dxvk() {
         return -1;
     }
 
+    printf("%d\n", data.dxvk_count);
     data.dxvk_installs[data.dxvk_count - 1] = dxvk;
 
     printf("DXVK created.\n");

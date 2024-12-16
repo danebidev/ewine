@@ -23,6 +23,7 @@ void usage() {
     printf("                            If the component type is not specified, it will list all components\n");
     printf("    run <prefix>            Runs the specified prefix with the saved settings\n");
     printf("    create                  Creates a new prefix and prompts for prefix settings\n");
+    printf("    remove <prefix>         Removes the specified prefix\n");
     printf("    wine add                Adds a new wine install\n");
     printf("    wine rem <wine>         Removes the specified wine install\n");
     printf("    dxvk add                Adds a new dxvk install\n");
@@ -43,6 +44,8 @@ void run_ewine(char* argv[], int argc, int cur_index) {
         ret = command_list(argv, argc, cur_index + 1);
     else if (strcmp(argv[cur_index], "create") == 0)
         ret = command_create(argv, argc, cur_index + 1);
+    else if (strcmp(argv[cur_index], "remove") == 0)
+        ret = command_remove(argv, argc, cur_index + 1);
     else if (strcmp(argv[cur_index], "wine") == 0)
         ret = command_wine(argv, argc, cur_index + 1);
     else if (strcmp(argv[cur_index], "dxvk") == 0)

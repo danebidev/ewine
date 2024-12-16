@@ -36,6 +36,8 @@ source_files = [
   'create.c',
   'components.h',
   'components.c',
+  'remove.h',
+  'remove.c',
 ]
 
 executable(meson.project_name(), source_files, dependencies: [cjson])
