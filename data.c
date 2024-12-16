@@ -175,7 +175,7 @@ int alloc_component_array(uint8_t type, size_t length) {
     if (type == TYPE_WINE)
         update_prefix_wine_references();
     else if (type == TYPE_DXVK)
-        update_prefix_wine_references();
+        update_prefix_dxvk_references();
 
     return 0;
 }
@@ -550,11 +550,8 @@ void free_prefix(int index) {
     free(data.prefixes[index].name);
     free(data.prefixes[index].path);
     free(data.prefixes[index].binary);
-
-    // Might not be set on just created prefixes
-    // since we directly get the wine_t
-    if (data.prefixes[index].wine_name) free(data.prefixes[index].wine_name);
-    if (data.prefixes[index].dxvk_name) free(data.prefixes[index].dxvk_name);
+    free(data.prefixes[index].wine_name);
+    free(data.prefixes[index].dxvk_name);
 }
 
 void free_wine(int index) {
