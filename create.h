@@ -1,3 +1,5 @@
 #pragma once
 
-int command_create(char *argv[], int argc, int args_index);
+int read_and_create_prefix();
+int create_wine();
+int create_dxvk();

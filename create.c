@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <wordexp.h>
 
-#include "build_config.h"
 #include "config.h"
 #include "data.h"
 #include "util.h"
@@ -348,45 +347,5 @@ int create_dxvk() {
 
     printf("DXVK created.\n");
 
-    return 0;
-}
-
-/**
- * @return 0 if the command completed succesfully, -1 otherwise
- */
-int command_create(char* argv[], int argc, int args_index) {
-    if (args_index + 1 < argc) {
-        printf("%s: unexpected argument '%s'\n", PROGRAM_NAME, argv[args_index]);
-        return -1;
-    }
-    else if (args_index >= argc) {
-        printf("%s: missing component type. Should be one of 'prefix', 'wine' or 'dxvk'\n", PROGRAM_NAME);
-        return -1;
-    }
-
-    if (strcmp(argv[args_index], "prefix") == 0) {
-        if (read_and_create_prefix() == -1) {
-            LOG(LOG_ERROR, "can't create prefix\n");
-            return 1;
-        }
-    }
-    else if (strcmp(argv[args_index], "wine") == 0) {
-        if (create_wine() == -1) {
-            LOG(LOG_ERROR, "can't create wine\n");
-            return 1;
-        }
-    }
-    else if (strcmp(argv[args_index], "dxvk") == 0) {
-        if (create_dxvk() == -1) {
-            LOG(LOG_ERROR, "can't create dxvk\n");
-            return 1;
-        }
-    }
-    else {
-        printf("%s: unrecognized component type '%s'. Should be one of 'prefix', 'wine' or 'dxvk'\n", PROGRAM_NAME, argv[args_index]);
-        return -1;
-    }
-
-    save_data();
     return 0;
 }

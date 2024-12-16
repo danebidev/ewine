@@ -107,6 +107,34 @@ char* json_get_string(cJSON* obj, char* key) {
     return result;
 }
 
+void update_prefix_wine_references() {
+    for (int i = 0; i < data.prefix_count; i++) {
+        if (data.prefixes[i].wine_name) {
+            data.prefixes[i].wine = NULL;
+            for (int j = 0; j < data.wine_count; j++) {
+                if (strcmp(data.wine_installs[j].name, data.prefixes[i].wine_name) == 0) {
+                    data.prefixes[i].wine = &data.wine_installs[j];
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void update_prefix_dxvk_references() {
+    for (int i = 0; i < data.prefix_count; i++) {
+        data.prefixes[i].dxvk = NULL;
+        if (data.prefixes[i].dxvk_name && strcmp(data.prefixes[i].dxvk_name, "none") != 0) {
+            for (int j = 0; j < data.dxvk_count; j++) {
+                if (strcmp(data.dxvk_installs[j].name, data.prefixes[i].dxvk_name) == 0) {
+                    data.prefixes[i].dxvk = &data.dxvk_installs[j];
+                    break;
+                }
+            }
+        }
+    }
+}
+
 /**
  * Allocates or reallocates memory for an array of the specified type.
  * @param type The type of array to allocate (TYPE_PREFIX, TYPE_WINE, or TYPE_DXVK)
@@ -143,6 +171,12 @@ int alloc_component_array(uint8_t type, size_t length) {
     if (!new_ptr) return -1;
 
     *target = new_ptr;
+
+    if (type == TYPE_WINE)
+        update_prefix_wine_references();
+    else if (type == TYPE_DXVK)
+        update_prefix_wine_references();
+
     return 0;
 }
 
