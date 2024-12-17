@@ -136,8 +136,8 @@ int create_prefix(char* prefix_name, char* prefix_path, char* binary_path, char*
         .arch = str_to_arch(arch),
         .wine = wine,
         .dxvk = dxvk,
-        .wine_name = strdup(wine->name),
-        .dxvk_name = strdup(dxvk->name)
+        .wine_name = wine ? strdup(wine->name) : NULL,
+        .dxvk_name = dxvk ? strdup(dxvk->name) : NULL
     };
 
     data.prefix_count++;
@@ -227,7 +227,7 @@ int read_and_create_prefix() {
     wordexp(binary_path, &p, WRDE_REUSE);
     strcpy(binary_path, *p.we_wordv);
 
-    if (binary_path[0] != '/') {
+    if (binary_path[0] != '/' && strcmp(binary_path, "notepad.exe") && strcmp(binary_path, "explorer.exe")) {
         LOG(LOG_ERROR, "the binary path has to be absolute\n");
         wordfree(&p);
         return -1;

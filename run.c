@@ -249,6 +249,11 @@ int is_dxvk_applied(prefix_t* prefix) {
     snprintf(reg_path, sizeof(reg_path), "%s/user.reg", prefix->path);
 
     FILE* reg_file = fopen(reg_path, "r");
+    if (!reg_file) {
+        LOG(LOG_WARNING, "Couldn't read prefix registry file. Is the prefix initialized?\n");
+        return 0;
+    }
+
     char line[1024];  // Surely no line is longer than 1024 characters
     int dxvk_found = 0;
 

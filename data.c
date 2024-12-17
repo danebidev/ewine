@@ -468,7 +468,7 @@ void check_prefix(prefix_t* prefix) {
         wine_t* wine = NULL;
 
         if (strcmp(prefix->wine_name, "none") == 0) {
-            LOG(LOG_WARNING, "Prefix %s doesn't have a wine version set", prefix->name);
+            LOG(LOG_WARNING, "Prefix %s doesn't have a wine version set\n", prefix->name);
             wine = NULL;
             goto end_wine;
         }
@@ -500,7 +500,7 @@ void check_prefix(prefix_t* prefix) {
         dxvk_t* dxvk = NULL;
 
         if (strcmp(prefix->dxvk_name, "none") == 0) {
-            LOG(LOG_WARNING, "Prefix %s doesn't have a DXVK version set", prefix->name);
+            LOG(LOG_WARNING, "Prefix %s doesn't have a DXVK version set\n", prefix->name);
             dxvk = NULL;
             goto end_dxvk;
         }
